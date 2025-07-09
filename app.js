@@ -103,10 +103,11 @@ class VideoCreationApp {
     }
 
     /**
-     * Load model images from configuration
+     * Load model images from configuration and database
      */
-    loadModelImages() {
+    async loadModelImages() {
         try {
+            // Load static model images
             const modelElements = this.domCache.get('model-images', () => 
                 safeGetElements('.model-image')
             );
@@ -119,8 +120,127 @@ class VideoCreationApp {
                     console.warn(`Invalid or missing image for model: ${modelId}`);
                 }
             });
+            
+            // Load registered models from database
+            await this.loadRegisteredModels();
+            
         } catch (error) {
             handleError(error, 'Model image loading');
+        }
+    }
+
+    /**
+     * Load registered models from database
+     */
+    async loadRegisteredModels() {
+        try {
+            // Initialize database
+            await xbrushDB.init();
+            
+            // Get approved models
+            const registeredModels = await xbrushDB.getApprovedModels();
+            
+            if (registeredModels.length > 0) {
+                this.renderRegisteredModels(registeredModels);
+            }
+            
+        } catch (error) {
+            console.error('Error loading registered models:', error);
+            // Don't show error to user as this is optional functionality
+        }
+    }
+
+    /**
+     * Render registered models in Step 1
+     */
+    renderRegisteredModels(models) {
+        const step1 = document.getElementById('step1');
+        if (!step1) return;
+        
+        // Find the virtual models section
+        const virtualSection = step1.querySelector('.card-grid').parentElement;
+        if (!virtualSection) return;
+        
+        // Create registered models section
+        const registeredSection = document.createElement('section');
+        registeredSection.className = 'registered-models-section';
+        registeredSection.innerHTML = `
+            <header class="flex items-center mb-2">
+                <h2 class="subheading mb-0 mr-3">등록된 AI 모델</h2>
+                <span class="badge badge-new">NEW</span>
+            </header>
+            <p class="description mb-2">커뮤니티에서 등록한 실제 모델들입니다.</p>
+            <div class="card-grid" id="registeredModelsGrid"></div>
+        `;
+        
+        const grid = registeredSection.querySelector('#registeredModelsGrid');
+        
+        models.forEach(model => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.setAttribute('data-model', model.id);
+            card.setAttribute('data-tier', model.tier);
+            card.onclick = () => selectModel(card, model.id, model.tier);
+            
+            // Create model image element
+            const modelImage = document.createElement('div');
+            modelImage.className = 'model-image';
+            modelImage.style.backgroundImage = `url('${model.profileImage}')`;
+            
+            // Add tier badge
+            const badge = document.createElement('div');
+            badge.className = `badge ${model.tier === 'premium' ? 'premium-badge' : ''}`;
+            badge.textContent = model.tier === 'premium' ? '100💎' : 'FREE';
+            modelImage.appendChild(badge);
+            
+            // Create card content
+            card.innerHTML = `
+                <h3>${model.name}</h3>
+                <p>${model.description}</p>
+            `;
+            
+            // Prepend the model image
+            card.insertBefore(modelImage, card.firstChild);
+            
+            grid.appendChild(card);
+        });
+        
+        // Insert after virtual models section
+        virtualSection.parentElement.insertBefore(registeredSection, virtualSection.nextSibling);
+        
+        // Update badge style if not already in CSS
+        if (!document.querySelector('#registered-models-styles')) {
+            const style = document.createElement('style');
+            style.id = 'registered-models-styles';
+            style.textContent = `
+                .registered-models-section {
+                    margin-top: 40px;
+                }
+                
+                .badge-new {
+                    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 12px;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                .flex {
+                    display: flex;
+                }
+                
+                .items-center {
+                    align-items: center;
+                }
+                
+                .mr-3 {
+                    margin-right: 12px;
+                }
+            `;
+            document.head.appendChild(style);
         }
     }
 
@@ -1131,7 +1251,7 @@ function initializeApp() {
 /**
  * Model selection handler
  */
-function selectModel(element, modelId, tier) {
+async function selectModel(element, modelId, tier) {
     try {
         app.uiController.clearSelections('#step1');
         element.classList.add('selected');
@@ -1139,7 +1259,38 @@ function selectModel(element, modelId, tier) {
         app.dataService.updateField('model', modelId);
         app.dataService.updateField('modelTier', tier);
         
-        if (tier === 'premium') {
+        // Handle registered models
+        if (modelId.startsWith('model_')) {
+            try {
+                // Load model details from database
+                const modelDetails = await xbrushDB.getModelDetails(modelId);
+                if (modelDetails) {
+                    app.dataService.updateField('modelDetails', modelDetails);
+                    
+                    // Check contract terms
+                    if (modelDetails.contract.requiresReview) {
+                        showToast('이 모델은 사전 검토가 필요합니다.', 'info');
+                    }
+                    
+                    // Check contract expiration
+                    const expiresAt = new Date(modelDetails.contract.expiresAt);
+                    if (expiresAt < new Date()) {
+                        showToast('⚠️ 이 모델의 계약이 만료되었습니다.', 'warning');
+                        return;
+                    }
+                }
+                
+                // Track usage
+                await xbrushDB.trackUsage(modelId);
+                
+                showToast('🎬 등록된 AI 모델이 선택되었습니다! 100 크레딧이 차감됩니다.', 'info');
+                
+            } catch (error) {
+                console.error('Error handling registered model:', error);
+                showToast('모델 정보를 불러오는데 실패했습니다.', 'error');
+                return;
+            }
+        } else if (tier === 'premium') {
             showToast('🎬 프리미엄 배우가 선택되었습니다! 100 크레딧이 차감됩니다.', 'info');
         }
         

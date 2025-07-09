@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>xBrush Admin - Model Management</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f7fafc;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            color: #2d3748;
+        }
+        
+        .header p {
+            margin: 0;
+            color: #4a5568;
+        }
+        
+        .admin-actions {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .admin-actions h2 {
+            margin: 0 0 20px 0;
+            color: #2d3748;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #3182ce;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2c5aa0;
+        }
+        
+        .btn-success {
+            background: #38a169;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #2f855a;
+        }
+        
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c53030;
+        }
+        
+        .models-grid {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .models-grid h2 {
+            margin: 0 0 20px 0;
+            color: #2d3748;
+        }
+        
+        .model-list {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .model-item {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: border-color 0.2s;
+        }
+        
+        .model-item:hover {
+            border-color: #cbd5e0;
+        }
+        
+        .model-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-size: cover;
+            background-position: center;
+            margin-right: 20px;
+            border: 3px solid #e2e8f0;
+        }
+        
+        .model-info {
+            flex: 1;
+        }
+        
+        .model-info h3 {
+            margin: 0 0 5px 0;
+            color: #2d3748;
+        }
+        
+        .model-info p {
+            margin: 0 0 10px 0;
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+        
+        .model-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            color: #718096;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-pending {
+            background: #fed7d7;
+            color: #c53030;
+        }
+        
+        .status-approved {
+            background: #c6f6d5;
+            color: #2f855a;
+        }
+        
+        .status-rejected {
+            background: #fed7d7;
+            color: #c53030;
+        }
+        
+        .model-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        
+        .status-info {
+            background: #bee3f8;
+            color: #2c5aa0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛠️ xBrush 모델 관리 시스템</h1>
+            <p>등록된 모델을 검토하고 승인/거절 처리를 할 수 있습니다.</p>
+        </div>
+        
+        <div class="admin-actions">
+            <h2>관리 작업</h2>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="addMockData()">
+                    📦 테스트 데이터 추가
+                </button>
+                <button class="btn btn-success" onclick="approveAllPending()">
+                    ✅ 모든 대기 모델 승인
+                </button>
+                <button class="btn btn-danger" onclick="clearAllData()">
+                    🗑️ 모든 데이터 삭제
+                </button>
+                <button class="btn btn-primary" onclick="refreshModels()">
+                    🔄 새로고침
+                </button>
+            </div>
+        </div>
+        
+        <div class="models-grid">
+            <h2>등록된 모델 목록</h2>
+            <div id="statusInfo" class="status-info" style="display: none;"></div>
+            <div id="modelsList" class="model-list">
+                <div class="loading">모델 목록을 불러오는 중...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="constants.js"></script>
+    <script src="utils.js"></script>
+    <script src="db.js"></script>
+    
+    <script>
+        class AdminApp {
+            constructor() {
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    await xbrushDB.init();
+                    await this.loadModels();
+                    console.log('Admin app initialized');
+                } catch (error) {
+                    console.error('Admin app initialization error:', error);
+                    this.showStatus('데이터베이스 초기화에 실패했습니다.', 'error');
+                }
+            }
+            
+            async loadModels() {
+                try {
+                    const models = await xbrushDB.getAllModels();
+                    this.renderModels(models);
+                } catch (error) {
+                    console.error('Error loading models:', error);
+                    this.showStatus('모델 목록을 불러오는데 실패했습니다.', 'error');
+                }
+            }
+            
+            renderModels(models) {
+                const listElement = document.getElementById('modelsList');
+                
+                if (models.length === 0) {
+                    listElement.innerHTML = '<div class="loading">등록된 모델이 없습니다.</div>';
+                    return;
+                }
+                
+                listElement.innerHTML = '';
+                
+                models.forEach(model => {
+                    const modelElement = document.createElement('div');
+                    modelElement.className = 'model-item';
+                    
+                    const createdDate = new Date(model.createdAt).toLocaleDateString('ko-KR');
+                    const updatedDate = new Date(model.updatedAt).toLocaleDateString('ko-KR');
+                    
+                    modelElement.innerHTML = `
+                        <div class="model-image" style="background-image: url('${model.profileImage}')"></div>
+                        <div class="model-info">
+                            <h3>${model.name}</h3>
+                            <p>${model.description}</p>
+                            <div class="model-meta">
+                                <span>ID: ${model.id}</span>
+                                <span>등급: ${model.tier}</span>
+                                <span>등록일: ${createdDate}</span>
+                                <span>수정일: ${updatedDate}</span>
+                            </div>
+                        </div>
+                        <div class="model-actions">
+                            <span class="status-badge status-${model.status}">${this.getStatusText(model.status)}</span>
+                            ${this.getActionButtons(model)}
+                        </div>
+                    `;
+                    
+                    listElement.appendChild(modelElement);
+                });
+            }
+            
+            getStatusText(status) {
+                const statusMap = {
+                    pending: '검토중',
+                    approved: '승인됨',
+                    rejected: '거절됨',
+                    inactive: '비활성'
+                };
+                return statusMap[status] || status;
+            }
+            
+            getActionButtons(model) {
+                if (model.status === 'pending') {
+                    return `
+                        <button class="btn btn-success btn-small" onclick="adminApp.approveModel('${model.id}')">승인</button>
+                        <button class="btn btn-danger btn-small" onclick="adminApp.rejectModel('${model.id}')">거절</button>
+                    `;
+                } else if (model.status === 'approved') {
+                    return `
+                        <button class="btn btn-danger btn-small" onclick="adminApp.deactivateModel('${model.id}')">비활성화</button>
+                    `;
+                } else {
+                    return `
+                        <button class="btn btn-success btn-small" onclick="adminApp.approveModel('${model.id}')">재승인</button>
+                        <button class="btn btn-danger btn-small" onclick="adminApp.deleteModel('${model.id}')">삭제</button>
+                    `;
+                }
+            }
+            
+            async approveModel(modelId) {
+                try {
+                    await xbrushDB.updateModelStatus(modelId, 'approved');
+                    await this.loadModels();
+                    this.showStatus(`모델 ${modelId}가 승인되었습니다.`, 'success');
+                } catch (error) {
+                    console.error('Error approving model:', error);
+                    this.showStatus('승인 처리에 실패했습니다.', 'error');
+                }
+            }
+            
+            async rejectModel(modelId) {
+                try {
+                    await xbrushDB.updateModelStatus(modelId, 'rejected');
+                    await this.loadModels();
+                    this.showStatus(`모델 ${modelId}가 거절되었습니다.`, 'success');
+                } catch (error) {
+                    console.error('Error rejecting model:', error);
+                    this.showStatus('거절 처리에 실패했습니다.', 'error');
+                }
+            }
+            
+            async deactivateModel(modelId) {
+                try {
+                    await xbrushDB.updateModelStatus(modelId, 'inactive');
+                    await this.loadModels();
+                    this.showStatus(`모델 ${modelId}가 비활성화되었습니다.`, 'success');
+                } catch (error) {
+                    console.error('Error deactivating model:', error);
+                    this.showStatus('비활성화 처리에 실패했습니다.', 'error');
+                }
+            }
+            
+            async deleteModel(modelId) {
+                if (!confirm(`모델 ${modelId}를 완전히 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
+                    return;
+                }
+                
+                try {
+                    await xbrushDB.deleteModel(modelId);
+                    await this.loadModels();
+                    this.showStatus(`모델 ${modelId}가 삭제되었습니다.`, 'success');
+                } catch (error) {
+                    console.error('Error deleting model:', error);
+                    this.showStatus('삭제 처리에 실패했습니다.', 'error');
+                }
+            }
+            
+            showStatus(message, type) {
+                const statusElement = document.getElementById('statusInfo');
+                statusElement.textContent = message;
+                statusElement.className = `status-info status-${type}`;
+                statusElement.style.display = 'block';
+                
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        // Global functions
+        async function addMockData() {
+            try {
+                await xbrushDB.addMockData();
+                await adminApp.loadModels();
+                adminApp.showStatus('테스트 데이터가 추가되었습니다.', 'success');
+            } catch (error) {
+                console.error('Error adding mock data:', error);
+                adminApp.showStatus('테스트 데이터 추가에 실패했습니다.', 'error');
+            }
+        }
+        
+        async function approveAllPending() {
+            try {
+                const models = await xbrushDB.getAllModels();
+                const pendingModels = models.filter(m => m.status === 'pending');
+                
+                for (const model of pendingModels) {
+                    await xbrushDB.updateModelStatus(model.id, 'approved');
+                }
+                
+                await adminApp.loadModels();
+                adminApp.showStatus(`${pendingModels.length}개의 모델이 승인되었습니다.`, 'success');
+            } catch (error) {
+                console.error('Error approving all pending:', error);
+                adminApp.showStatus('일괄 승인 처리에 실패했습니다.', 'error');
+            }
+        }
+        
+        async function clearAllData() {
+            if (!confirm('모든 모델 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                return;
+            }
+            
+            try {
+                const models = await xbrushDB.getAllModels();
+                for (const model of models) {
+                    await xbrushDB.deleteModel(model.id);
+                }
+                
+                await adminApp.loadModels();
+                adminApp.showStatus('모든 데이터가 삭제되었습니다.', 'success');
+            } catch (error) {
+                console.error('Error clearing data:', error);
+                adminApp.showStatus('데이터 삭제에 실패했습니다.', 'error');
+            }
+        }
+        
+        async function refreshModels() {
+            await adminApp.loadModels();
+            adminApp.showStatus('모델 목록이 새로고침되었습니다.', 'success');
+        }
+        
+        // Initialize admin app
+        let adminApp;
+        document.addEventListener('DOMContentLoaded', () => {
+            adminApp = new AdminApp();
+        });
+    </script>
+</body>
+</html>

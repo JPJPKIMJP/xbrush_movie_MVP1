@@ -236,8 +236,8 @@ class ModelRegistrationApp {
     /**
      * Navigate to next step
      */
-    nextModelStep() {
-        if (this.validateCurrentStep()) {
+    async nextModelStep() {
+        if (await this.validateCurrentStep()) {
             this.goToStep(this.currentStep + 1);
         }
     }
@@ -252,14 +252,14 @@ class ModelRegistrationApp {
     /**
      * Validate current step
      */
-    validateCurrentStep() {
+    async validateCurrentStep() {
         switch(this.currentStep) {
             case 1:
                 return this.validateKYC();
             case 2:
                 return this.validateContract();
             case 3:
-                return this.validatePortfolio();
+                return await this.validatePortfolio();
             default:
                 return true;
         }
@@ -761,6 +761,185 @@ class ModelRegistrationApp {
         };
     }
 
+    /**
+     * Complete registration and save to database
+     */
+    async completeRegistration() {
+        try {
+            // Initialize database
+            await xbrushDB.init();
+            
+            // Generate unique model ID
+            const modelId = `model_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Convert face photo to base64
+            const profileImage = await this.convertBlobToBase64(this.registrationData.facePhoto);
+            
+            // Create model profile
+            const modelData = {
+                id: modelId,
+                name: this.registrationData.ocrData?.name || 'Unknown',
+                tier: 'premium', // All registered models are premium
+                status: 'pending', // Require approval
+                profileImage: profileImage,
+                description: `${this.registrationData.ocrData?.name || 'Unknown'}의 AI 모델`,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            // Save model profile
+            await xbrushDB.saveModel(modelData);
+            
+            // Process portfolio images
+            const processedImages = await this.processPortfolioImages();
+            
+            // Create contract details with expiration date
+            const contractPeriod = parseInt(this.registrationData.contract.period);
+            const expiresAt = new Date();
+            expiresAt.setMonth(expiresAt.getMonth() + contractPeriod);
+            
+            // Save model details
+            const modelDetails = {
+                modelId: modelId,
+                kyc: {
+                    verified: true,
+                    verifiedAt: new Date().toISOString(),
+                    attemptCount: this.kycAttempts
+                },
+                contract: {
+                    ...this.registrationData.contract,
+                    expiresAt: expiresAt.toISOString(),
+                    allowedScopes: ['commercial', 'sns', 'search'] // Default basic scopes
+                },
+                portfolio: processedImages
+            };
+            
+            await xbrushDB.saveModelDetails(modelDetails);
+            
+            // Save portfolio images separately for efficient loading
+            if (processedImages.length > 0) {
+                await xbrushDB.savePortfolioImages(modelId, processedImages);
+            }
+            
+            // Store registration result
+            this.registrationData.modelId = modelId;
+            this.registrationData.status = 'pending';
+            
+            this.showToast('모델 등록이 완료되었습니다! 검수 승인을 기다려주세요.', 'success');
+            
+            // Navigate to next step or show completion
+            this.goToStep(5); // Go to review step
+            
+        } catch (error) {
+            console.error('Registration completion error:', error);
+            this.showToast('등록 완료 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
+        }
+    }
+
+    /**
+     * Convert blob to base64
+     */
+    async convertBlobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    /**
+     * Process portfolio images for database storage
+     */
+    async processPortfolioImages() {
+        const processedImages = [];
+        
+        for (let i = 0; i < this.uploadedImages.length; i++) {
+            const image = this.uploadedImages[i];
+            
+            try {
+                // Convert image to base64
+                const base64 = await this.convertBlobToBase64(image.file);
+                
+                // Create thumbnail (optional - for performance)
+                const thumbnail = await this.createThumbnail(image.file, 200, 200);
+                
+                // Get image dimensions
+                const dimensions = await this.getImageDimensions(image.file);
+                
+                const processedImage = {
+                    id: `img_${Date.now()}_${i}`,
+                    name: image.name,
+                    url: base64,
+                    thumbnail: thumbnail,
+                    width: dimensions.width,
+                    height: dimensions.height,
+                    size: image.file.size,
+                    isPrimary: i === 0 // First image is primary
+                };
+                
+                processedImages.push(processedImage);
+                
+            } catch (error) {
+                console.error('Error processing image:', image.name, error);
+            }
+        }
+        
+        return processedImages;
+    }
+
+    /**
+     * Create thumbnail from image file
+     */
+    async createThumbnail(file, maxWidth, maxHeight) {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = () => {
+                // Calculate thumbnail dimensions
+                let { width, height } = img;
+                
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                // Draw thumbnail
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Convert to base64
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            
+            img.onerror = () => resolve(null);
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    /**
+     * Get image dimensions
+     */
+    async getImageDimensions(file) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve({ width: img.width, height: img.height });
+            img.onerror = () => resolve({ width: 0, height: 0 });
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
     // ==========================================
     // PORTFOLIO FUNCTIONALITY
     // ==========================================
@@ -1000,13 +1179,17 @@ class ModelRegistrationApp {
     /**
      * Validate portfolio completion
      */
-    validatePortfolio() {
+    async validatePortfolio() {
         if (this.uploadedImages.length < 10) {
             this.showToast('최소 10장의 이미지를 업로드해주세요.', 'warning');
             return false;
         }
         
         this.registrationData.portfolio = this.uploadedImages;
+        
+        // Complete registration and save to database
+        await this.completeRegistration();
+        
         return true;
     }
 
