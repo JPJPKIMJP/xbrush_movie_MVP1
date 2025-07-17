@@ -12,6 +12,7 @@ class ModelDisplay {
         this.modelsPerPage = 12; // 3x4 grid on desktop
         this.allModels = [];
         this.filteredModels = [];
+        this.initialLoad = true; // Track if this is the first load
     }
 
     /**
@@ -23,6 +24,27 @@ class ModelDisplay {
             console.error('Models container not found:', containerId);
             return;
         }
+
+        // Check URL parameters for page number
+        const urlParams = new URLSearchParams(window.location.search);
+        const pageParam = urlParams.get('page');
+        if (pageParam && !isNaN(pageParam)) {
+            this.currentPage = parseInt(pageParam);
+        }
+
+        // Listen for browser back/forward navigation
+        window.addEventListener('popstate', (event) => {
+            if (event.state && event.state.page) {
+                this.currentPage = event.state.page;
+                this.displayModelsWithPagination();
+            } else {
+                // No state, check URL
+                const params = new URLSearchParams(window.location.search);
+                const page = params.get('page');
+                this.currentPage = page ? parseInt(page) : 1;
+                this.displayModelsWithPagination();
+            }
+        });
 
         this.loadAndDisplayModels();
         this.setupEventListeners();
@@ -72,8 +94,12 @@ class ModelDisplay {
             this.allModels = sortedModels;
             this.filteredModels = filteredModels;
             
-            // Reset to first page when loading new data
-            this.currentPage = 1;
+            // Don't reset page if we're loading from URL parameter
+            // Only reset to page 1 when filter/sort changes
+            if (!this.initialLoad) {
+                this.currentPage = 1;
+            }
+            this.initialLoad = false;
             
             // Display models with pagination
             await this.displayModelsWithPagination();
@@ -219,6 +245,18 @@ class ModelDisplay {
      */
     async goToPage(page) {
         this.currentPage = page;
+        
+        // Update URL with page parameter
+        const url = new URL(window.location);
+        if (page > 1) {
+            url.searchParams.set('page', page);
+        } else {
+            url.searchParams.delete('page'); // Remove page param for page 1
+        }
+        
+        // Update browser history
+        window.history.pushState({ page: page }, '', url);
+        
         await this.displayModelsWithPagination();
         
         // Scroll to top of models section
@@ -560,6 +598,12 @@ class ModelDisplay {
                 );
                 e.target.classList.add('active');
                 
+                // Reset to page 1 and remove page param from URL
+                this.currentPage = 1;
+                const url = new URL(window.location);
+                url.searchParams.delete('page');
+                window.history.pushState({ page: 1 }, '', url);
+                
                 this.loadAndDisplayModels();
             });
         });
@@ -569,6 +613,13 @@ class ModelDisplay {
         if (sortSelect) {
             sortSelect.addEventListener('change', (e) => {
                 this.currentSort = e.target.value;
+                
+                // Reset to page 1 and remove page param from URL
+                this.currentPage = 1;
+                const url = new URL(window.location);
+                url.searchParams.delete('page');
+                window.history.pushState({ page: 1 }, '', url);
+                
                 this.loadAndDisplayModels();
             });
         }
@@ -579,6 +630,12 @@ class ModelDisplay {
             perPageSelect.addEventListener('change', (e) => {
                 this.modelsPerPage = parseInt(e.target.value);
                 this.currentPage = 1; // Reset to first page
+                
+                // Remove page param from URL
+                const url = new URL(window.location);
+                url.searchParams.delete('page');
+                window.history.pushState({ page: 1 }, '', url);
+                
                 if (this.filteredModels.length > 0) {
                     this.displayModelsWithPagination();
                 }
