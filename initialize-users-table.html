@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initialize Users Table - XBrush</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        .description {
+            color: #718096;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f7fafc;
+            border-radius: 6px;
+        }
+        .section h2 {
+            color: #4a5568;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        .code-block {
+            background-color: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+        }
+        .button {
+            background-color: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .button:hover {
+            background-color: #5a67d8;
+        }
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .status.info {
+            background-color: #bee3f8;
+            color: #2c5282;
+        }
+        .status.success {
+            background-color: #c6f6d5;
+            color: #276749;
+        }
+        .status.error {
+            background-color: #fed7d7;
+            color: #9b2c2c;
+        }
+        .users-list {
+            margin-top: 20px;
+        }
+        .user-item {
+            background-color: #f7fafc;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        .user-email {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .user-details {
+            font-size: 14px;
+            color: #718096;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Initialize Users Table</h1>
+        <p class="description">Firebase Users 컬렉션 구조를 초기화하고 확인합니다.</p>
+        
+        <div class="section">
+            <h2>📋 Users Collection Structure</h2>
+            <div class="code-block">
+{
+  uid: "firebase_auth_uid",
+  email: "user@example.com",
+  name: "사용자 이름",
+  phone: "010-1234-5678",
+  createdAt: timestamp,
+  lastLogin: timestamp,
+  role: "user", // or "model"
+  termsAgreed: true,
+  termsAgreedAt: timestamp,
+  termsAgreements: {
+    serviceTerms: true,
+    privacyPolicy: true,
+    portraitRights: true,
+    aiContentRights: true,
+    paymentTerms: true,
+    ageVerification: true,
+    marketing: false
+  },
+  videoCreations: [],
+  modelProfile: null // or model data if registered
+}
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🚀 Actions</h2>
+            <button class="button" onclick="checkUsersTable()">Check Users Table</button>
+            <button class="button" onclick="createSampleUser()">Create Test User</button>
+            <button class="button" onclick="listAllUsers()">List All Users</button>
+        </div>
+        
+        <div id="status"></div>
+        <div id="usersList" class="users-list"></div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Firebase Configuration -->
+    <script src="js/firebase-config.js"></script>
+    
+    <script>
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+        }
+        
+        async function checkUsersTable() {
+            try {
+                showStatus('Checking users table...', 'info');
+                
+                const usersSnapshot = await firebase.firestore().collection('users').limit(1).get();
+                
+                if (usersSnapshot.empty) {
+                    showStatus('Users table exists but is empty. Ready to accept new users!', 'success');
+                } else {
+                    showStatus(`Users table exists with ${usersSnapshot.size} user(s)`, 'success');
+                }
+                
+                // Check if any user has the new fields
+                const hasNewFields = await checkNewFields();
+                if (!hasNewFields) {
+                    showStatus('Users table exists but needs field updates for terms agreement', 'info');
+                }
+                
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                console.error('Error checking users table:', error);
+            }
+        }
+        
+        async function checkNewFields() {
+            try {
+                const snapshot = await firebase.firestore().collection('users').limit(1).get();
+                if (!snapshot.empty) {
+                    const userData = snapshot.docs[0].data();
+                    return userData.hasOwnProperty('termsAgreed');
+                }
+                return false;
+            } catch (error) {
+                console.error('Error checking fields:', error);
+                return false;
+            }
+        }
+        
+        async function createSampleUser() {
+            try {
+                showStatus('Creating test user...', 'info');
+                
+                // Create a test user with auth
+                const email = `test${Date.now()}@xbrush.ai`;
+                const password = 'test123456';
+                
+                const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Create user document
+                await firebase.firestore().collection('users').doc(user.uid).set({
+                    uid: user.uid,
+                    email: email,
+                    name: '테스트 사용자',
+                    phone: '010-0000-0000',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                    role: 'user',
+                    termsAgreed: false,
+                    termsAgreedAt: null,
+                    termsAgreements: null,
+                    videoCreations: [],
+                    modelProfile: null
+                });
+                
+                showStatus(`Test user created successfully! Email: ${email}`, 'success');
+                
+                // Sign out the test user
+                await firebase.auth().signOut();
+                
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                console.error('Error creating test user:', error);
+            }
+        }
+        
+        async function listAllUsers() {
+            try {
+                showStatus('Loading users...', 'info');
+                
+                const snapshot = await firebase.firestore().collection('users').orderBy('createdAt', 'desc').limit(10).get();
+                
+                const usersListEl = document.getElementById('usersList');
+                usersListEl.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    usersListEl.innerHTML = '<p style="color: #718096;">No users found</p>';
+                    showStatus('No users found', 'info');
+                    return;
+                }
+                
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    const userEl = document.createElement('div');
+                    userEl.className = 'user-item';
+                    userEl.innerHTML = `
+                        <div class="user-email">${user.email}</div>
+                        <div class="user-details">
+                            Name: ${user.name || 'Not set'} | 
+                            Role: ${user.role || 'user'} | 
+                            Terms Agreed: ${user.termsAgreed ? '✓' : '✗'} |
+                            Created: ${user.createdAt ? new Date(user.createdAt.toDate()).toLocaleString() : 'Unknown'}
+                        </div>
+                    `;
+                    usersListEl.appendChild(userEl);
+                });
+                
+                showStatus(`Loaded ${snapshot.size} users`, 'success');
+                
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                console.error('Error listing users:', error);
+            }
+        }
+        
+        // Check table on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkUsersTable, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1588,8 +1588,41 @@ function nextStep() {
         currentStep: app?.stepManager?.currentStep,
         TermsPopup: !!window.TermsPopup,
         termsAgreed: app?.dataService?.selectedData?.termsAgreed,
-        model: app?.dataService?.selectedData?.model
+        model: app?.dataService?.selectedData?.model,
+        isLoggedIn: window.authManager?.isLoggedIn()
     });
+    
+    // Check authentication when moving from step 1 to step 2
+    if (app && app.stepManager.currentStep === 1 && window.authManager && !window.authManager.isLoggedIn()) {
+        console.log('User not logged in, showing auth modal');
+        
+        // Show auth modal
+        if (window.authModal) {
+            window.authModal.open({
+                mode: 'login',
+                onSuccess: async (user) => {
+                    console.log('Login successful:', user.email);
+                    showToast('로그인되었습니다!', 'success');
+                    
+                    // Check if user has already agreed to terms
+                    const hasAgreedToTerms = await window.authManager.hasAgreedToTerms();
+                    
+                    if (!hasAgreedToTerms && window.TermsPopup) {
+                        // Show terms popup for logged-in user
+                        showTermsAndProceed();
+                    } else {
+                        // User already agreed to terms, proceed
+                        app.stepManager.nextStep();
+                    }
+                },
+                onCancel: () => {
+                    console.log('Login cancelled');
+                    showToast('로그인이 필요합니다.', 'warning');
+                }
+            });
+        }
+        return;
+    }
     
     // Show terms popup when moving from step 1 to step 2 (after model selection)
     if (app && app.stepManager.currentStep === 1 && window.TermsPopup && !app.dataService.selectedData.termsAgreed) {
@@ -1600,30 +1633,44 @@ function nextStep() {
         }
         
         console.log('Showing terms popup for movie maker');
-        const termsPopup = new TermsPopup({
-            context: 'movie-maker',
-            onAgree: (agreements) => {
-                console.log('Terms agreed', agreements);
-                // Store agreements in app data
-                if (app.dataService) {
-                    app.dataService.selectedData.termsAgreements = agreements;
-                    app.dataService.selectedData.termsAgreedAt = new Date().toISOString();
-                    app.dataService.selectedData.termsAgreed = true;
-                }
-                
-                showToast('약관에 동의하셨습니다. 동영상 제작을 시작합니다!', 'success');
-                app.stepManager.nextStep();
-            },
-            onCancel: () => {
-                console.log('Terms cancelled');
-                showToast('약관 동의가 필요합니다.', 'warning');
-            }
-        });
-        termsPopup.show();
+        showTermsAndProceed();
     } else if (app) {
         console.log('Proceeding to next step without terms popup');
         app.stepManager.nextStep();
     }
+}
+
+// Helper function to show terms and proceed
+function showTermsAndProceed() {
+    const termsPopup = new TermsPopup({
+        context: 'movie-maker',
+        onAgree: async (agreements) => {
+            console.log('Terms agreements:', agreements);
+            
+            // Store terms in app data
+            app.dataService.selectedData.termsAgreements = agreements;
+            app.dataService.selectedData.termsAgreedAt = new Date().toISOString();
+            app.dataService.selectedData.termsAgreed = true;
+            
+            // Update user's terms agreement in Firebase
+            if (window.authManager && window.authManager.isLoggedIn()) {
+                try {
+                    await window.authManager.updateTermsAgreement(agreements);
+                    console.log('Terms agreement saved to user profile');
+                } catch (error) {
+                    console.error('Failed to save terms agreement:', error);
+                }
+            }
+            
+            showToast('약관에 동의하셨습니다. 동영상 제작을 시작합니다!', 'success');
+            app.stepManager.nextStep();
+        },
+        onCancel: () => {
+            console.log('Terms cancelled');
+            showToast('약관 동의가 필요합니다.', 'warning');
+        }
+    });
+    termsPopup.show();
 }
 
 function prevStep() {
