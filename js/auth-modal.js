@@ -319,47 +319,74 @@ class AuthManager {
     }
 
     initAuthListener() {
-        firebase.auth().onAuthStateChanged(async (user) => {
-            this.currentUser = user;
-            
-            if (user) {
-                // Fetch user document
-                try {
-                    const doc = await firebase.firestore().collection('users').doc(user.uid).get();
-                    if (doc.exists) {
-                        this.userDoc = doc.data();
-                        console.log('User logged in:', this.userDoc);
-                    } else {
-                        console.log('User document not found, creating...');
-                        // Create basic user doc if it doesn't exist
-                        const userData = {
-                            uid: user.uid,
-                            email: user.email,
-                            name: user.displayName || user.email.split('@')[0],
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-                            role: 'user',
-                            termsAgreed: false,
-                            termsAgreedAt: null,
-                            termsAgreements: null,
-                            videoCreations: [],
-                            modelProfile: null
-                        };
-                        await firebase.firestore().collection('users').doc(user.uid).set(userData);
-                        this.userDoc = userData;
+        // Ensure Firebase is ready before setting up auth listener
+        if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
+            setTimeout(() => this.initAuthListener(), 100);
+            return;
+        }
+        
+        try {
+            firebase.auth().onAuthStateChanged(async (user) => {
+                this.currentUser = user;
+                
+                if (user) {
+                    // Fetch user document
+                    try {
+                        const db = window.firebaseDB || firebase.firestore();
+                        const doc = await db.collection('users').doc(user.uid).get();
+                        if (doc.exists) {
+                            this.userDoc = doc.data();
+                            console.log('User logged in:', this.userDoc);
+                        } else {
+                            console.log('User document not found, creating...');
+                            // Create basic user doc if it doesn't exist
+                            const userData = {
+                                uid: user.uid,
+                                email: user.email,
+                                name: user.displayName || user.email.split('@')[0],
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                                role: 'user',
+                                termsAgreed: false,
+                                termsAgreedAt: null,
+                                termsAgreements: null,
+                                videoCreations: [],
+                                modelProfile: null
+                            };
+                            await db.collection('users').doc(user.uid).set(userData);
+                            this.userDoc = userData;
+                        }
+                    } catch (error) {
+                        console.error('Error fetching user doc:', error);
+                        // Retry once after a delay if it's an initialization error
+                        if (error.message && error.message.includes('Firebase')) {
+                            setTimeout(async () => {
+                                try {
+                                    const db = window.firebaseDB || firebase.firestore();
+                                    const doc = await db.collection('users').doc(user.uid).get();
+                                    if (doc.exists) {
+                                        this.userDoc = doc.data();
+                                    }
+                                } catch (retryError) {
+                                    console.error('Retry failed:', retryError);
+                                }
+                            }, 1000);
+                        }
                     }
-                } catch (error) {
-                    console.error('Error fetching user doc:', error);
+                } else {
+                    this.userDoc = null;
                 }
-            } else {
-                this.userDoc = null;
-            }
-            
-            // Dispatch event for other components to listen
-            window.dispatchEvent(new CustomEvent('authStateChanged', { 
-                detail: { user: this.currentUser, userDoc: this.userDoc } 
-            }));
-        });
+                
+                // Dispatch event for other components to listen
+                window.dispatchEvent(new CustomEvent('authStateChanged', { 
+                    detail: { user: this.currentUser, userDoc: this.userDoc } 
+                }));
+            });
+        } catch (error) {
+            console.error('Error setting up auth listener:', error);
+            // Retry after a delay
+            setTimeout(() => this.initAuthListener(), 500);
+        }
     }
 
     async logout() {

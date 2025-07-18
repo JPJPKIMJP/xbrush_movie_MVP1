@@ -15,7 +15,21 @@ class AuthHeader {
         this.initialized = true;
         
         // Wait for Firebase to be ready
-        if (!window.firebase) {
+        if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
+            setTimeout(() => this.init(), 100);
+            return;
+        }
+        
+        // Also wait for Firebase to be fully initialized
+        try {
+            // Test if Firebase is actually initialized by checking auth
+            const auth = firebase.auth();
+            if (!auth) {
+                setTimeout(() => this.init(), 100);
+                return;
+            }
+        } catch (error) {
+            console.log('Firebase not ready yet, retrying...');
             setTimeout(() => this.init(), 100);
             return;
         }
@@ -26,12 +40,31 @@ class AuthHeader {
             
             if (user) {
                 try {
-                    const doc = await firebase.firestore().collection('users').doc(user.uid).get();
-                    if (doc.exists) {
-                        this.userDoc = doc.data();
+                    // Ensure Firestore is ready
+                    if (window.firebaseDB || firebase.firestore) {
+                        const db = window.firebaseDB || firebase.firestore();
+                        const doc = await db.collection('users').doc(user.uid).get();
+                        if (doc.exists) {
+                            this.userDoc = doc.data();
+                        }
                     }
                 } catch (error) {
                     console.error('Error fetching user doc:', error);
+                    // Retry once after a delay if it's an initialization error
+                    if (error.message && error.message.includes('Firebase')) {
+                        setTimeout(async () => {
+                            try {
+                                const db = window.firebaseDB || firebase.firestore();
+                                const doc = await db.collection('users').doc(user.uid).get();
+                                if (doc.exists) {
+                                    this.userDoc = doc.data();
+                                    this.updateHeaderUI();
+                                }
+                            } catch (retryError) {
+                                console.error('Retry failed:', retryError);
+                            }
+                        }, 1000);
+                    }
                 }
             } else {
                 this.userDoc = null;

@@ -43,10 +43,17 @@ class ModelDisplay {
             // Show loading state
             this.modelsContainer.innerHTML = '<div class="loading-state">모델을 불러오는 중...</div>';
             
-            // Wait a bit for Firebase to initialize if needed
-            if (!window.firebaseDB) {
-                console.log('Waiting for Firebase initialization...');
-                await new Promise(resolve => setTimeout(resolve, 2000));
+            // Wait for Firebase to initialize if needed
+            let retries = 0;
+            while ((!window.firebaseDB || !window.firebase || !window.firebase.firestore) && retries < 20) {
+                console.log('Waiting for Firebase initialization... (attempt ' + (retries + 1) + ')');
+                await new Promise(resolve => setTimeout(resolve, 200));
+                retries++;
+            }
+            
+            if (!window.firebaseDB && window.firebase && window.firebase.firestore) {
+                // Initialize firebaseDB if firebase is ready but firebaseDB isn't set
+                window.firebaseDB = firebase.firestore();
             }
             
             // Get active models using the adapter
@@ -326,7 +333,7 @@ class ModelDisplay {
                          alt="${name}" 
                          loading="lazy"
                          onload="this.classList.add('loaded');"
-                         onerror="this.style.display='none'; this.parentElement.innerHTML += '<div class=\\'image-error\\'><div class=\\'image-error-icon\\'>🖼️</div><div>이미지 로드 실패</div></div>';">
+                         onerror="if(this.src && !this.dataset.retried) { this.dataset.retried = 'true'; } else { this.style.display='none'; this.parentElement.innerHTML += '<div class=\\'image-error\\'><div class=\\'image-error-icon\\'>🖼️</div><div>이미지 로드 실패</div></div>'; }">
                     <div class="model-card-overlay">
                         <div class="overlay-buttons">
                             <button class="overlay-btn primary" onclick="event.stopPropagation(); sessionStorage.setItem('selectedModelForMovie', '${id}'); sessionStorage.setItem('skipToStep2', 'true'); window.location.href = 'index.html#step2';">
