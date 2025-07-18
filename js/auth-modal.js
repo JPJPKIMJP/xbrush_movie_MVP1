@@ -16,12 +16,12 @@ class AuthModal {
                 <div class="auth-modal">
                     <div class="auth-modal-header">
                         <h2 id="authModalTitle">로그인</h2>
-                        <button class="auth-modal-close" onclick="authModal.close()" title="닫기">×</button>
+                        <button class="auth-modal-close" onclick="window.authModal && window.authModal.close()" title="닫기">×</button>
                     </div>
                     
                     <div class="auth-tabs">
-                        <button class="auth-tab active" data-mode="login" onclick="authModal.switchMode('login')">로그인</button>
-                        <button class="auth-tab" data-mode="signup" onclick="authModal.switchMode('signup')">회원가입</button>
+                        <button class="auth-tab active" data-mode="login" onclick="window.authModal && window.authModal.switchMode('login')">로그인</button>
+                        <button class="auth-tab" data-mode="signup" onclick="window.authModal && window.authModal.switchMode('signup')">회원가입</button>
                     </div>
                     
                     <form id="authForm" class="auth-form">
@@ -54,7 +54,7 @@ class AuthModal {
                             <button type="submit" class="btn btn-primary auth-submit" id="authSubmitBtn">
                                 <span class="btn-text">로그인</span>
                             </button>
-                            <button type="button" class="btn btn-outline" onclick="authModal.close()">
+                            <button type="button" class="btn btn-outline" onclick="window.authModal && window.authModal.close()">
                                 취소
                             </button>
                         </div>
@@ -62,7 +62,7 @@ class AuthModal {
                         <div class="auth-footer">
                             <p id="authFooterText">
                                 계정이 없으신가요? 
-                                <a href="#" onclick="authModal.switchMode('signup'); return false;">회원가입</a>
+                                <a href="#" onclick="window.authModal && window.authModal.switchMode('signup'); return false;">회원가입</a>
                             </p>
                         </div>
                     </form>
@@ -127,8 +127,8 @@ class AuthModal {
         footerText.style.opacity = '0';
         setTimeout(() => {
             footerText.innerHTML = isSignup
-                ? '이미 계정이 있으신가요? <a href="#" onclick="authModal.switchMode(\'login\'); return false;">로그인</a>'
-                : '계정이 없으신가요? <a href="#" onclick="authModal.switchMode(\'signup\'); return false;">회원가입</a>';
+                ? '이미 계정이 있으신가요? <a href="#" onclick="window.authModal && window.authModal.switchMode(\'login\'); return false;">로그인</a>'
+                : '계정이 없으신가요? <a href="#" onclick="window.authModal && window.authModal.switchMode(\'signup\'); return false;">회원가입</a>';
             footerText.style.opacity = '1';
         }, 150);
 
@@ -147,7 +147,7 @@ class AuthModal {
         
         // Disable submit button with loading state
         this.submitBtn.disabled = true;
-        const btnText = this.submitBtn.querySelector('.btn-text');
+        const btnText = this.submitBtn.querySelector('.btn-text') || this.submitBtn;
         const originalText = btnText.textContent;
         btnText.innerHTML = '<span style="display: inline-block; animation: pulse 1.5s infinite;">처리 중...</span>';
 
@@ -258,7 +258,7 @@ class AuthModal {
         } finally {
             // Re-enable submit button
             this.submitBtn.disabled = false;
-            const btnText = this.submitBtn.querySelector('.btn-text');
+            const btnText = this.submitBtn.querySelector('.btn-text') || this.submitBtn;
             btnText.textContent = this.mode === 'signup' ? '회원가입' : '로그인';
         }
     }
@@ -355,9 +355,18 @@ class AuthModal {
 
 // Initialize global instance
 let authModal;
-document.addEventListener('DOMContentLoaded', () => {
+
+// Initialize immediately if DOM is already loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        authModal = new AuthModal();
+        window.authModal = authModal; // Make it globally accessible
+    });
+} else {
+    // DOM is already loaded
     authModal = new AuthModal();
-});
+    window.authModal = authModal;
+}
 
 // Auth state management
 class AuthManager {
@@ -495,6 +504,15 @@ class AuthManager {
 
 // Initialize auth manager
 let authManager;
-document.addEventListener('DOMContentLoaded', () => {
+
+// Initialize immediately if DOM is already loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        authManager = new AuthManager();
+        window.authManager = authManager; // Make it globally accessible
+    });
+} else {
+    // DOM is already loaded
     authManager = new AuthManager();
-});
+    window.authManager = authManager;
+}
