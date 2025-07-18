@@ -1,0 +1,346 @@
+/* Auth Header Styles */
+
+/* Header Auth UI */
+.header-auth-ui {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+/* Login Button */
+.btn-login {
+    padding: 8px 20px;
+    background-color: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-login:hover {
+    background-color: #5a67d8;
+    transform: translateY(-1px);
+}
+
+/* User Menu */
+.user-menu {
+    position: relative;
+}
+
+.user-menu-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.user-menu-toggle:hover {
+    background-color: #f7fafc;
+    border-color: #cbd5e0;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #667eea;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #2d3748;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dropdown-icon {
+    transition: transform 0.2s;
+}
+
+.user-menu-toggle:hover .dropdown-icon {
+    transform: translateY(1px);
+}
+
+/* User Dropdown */
+.user-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    min-width: 220px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s;
+    z-index: 1000;
+}
+
+.user-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.user-info {
+    padding: 16px;
+}
+
+.user-email {
+    font-size: 13px;
+    color: #4a5568;
+    margin-bottom: 4px;
+}
+
+.user-role {
+    font-size: 12px;
+    color: #718096;
+    background-color: #f7fafc;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: #e2e8f0;
+    margin: 0;
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    text-align: left;
+    background: none;
+    border: none;
+    font-size: 14px;
+    color: #4a5568;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.dropdown-item:hover {
+    background-color: #f7fafc;
+    color: #2d3748;
+}
+
+.dropdown-item.logout {
+    color: #e53e3e;
+}
+
+.dropdown-item.logout:hover {
+    background-color: #fff5f5;
+}
+
+/* Mobile Auth UI */
+.mobile-auth-ui {
+    display: none;
+    padding: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.btn-login-mobile {
+    width: 100%;
+    padding: 12px 24px;
+    background-color: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-login-mobile:hover {
+    background-color: #5a67d8;
+}
+
+.mobile-user-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.user-avatar-large {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #667eea;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.user-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-details .user-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 4px;
+}
+
+.user-details .user-email {
+    font-size: 14px;
+    color: #718096;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mobile-menu-divider {
+    height: 1px;
+    background-color: #e2e8f0;
+    margin: 16px 0;
+}
+
+.btn-logout-mobile {
+    width: 100%;
+    padding: 12px 24px;
+    background: none;
+    border: 1px solid #e53e3e;
+    border-radius: 8px;
+    color: #e53e3e;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 16px;
+}
+
+.btn-logout-mobile:hover {
+    background-color: #fff5f5;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .header-auth-ui {
+        display: none; /* Hide desktop auth UI on mobile */
+    }
+    
+    .mobile-auth-ui {
+        display: block; /* Show mobile auth UI */
+    }
+    
+    /* Adjust header for mobile */
+    .header-nav.active .mobile-auth-ui {
+        display: block;
+    }
+}
+
+/* Fix for auth modal on mobile */
+@media (max-width: 480px) {
+    .auth-modal {
+        margin: 10px;
+        width: calc(100% - 20px);
+        max-width: none;
+    }
+    
+    .auth-modal-header {
+        padding: 20px 20px 0;
+    }
+    
+    .auth-form {
+        padding: 20px;
+    }
+    
+    .auth-tabs {
+        margin: 12px 20px;
+    }
+}
+
+/* Integration with existing header styles */
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-nav .nav-link {
+    margin-right: 0;
+}
+
+/* Ensure proper spacing in mobile menu */
+#headerNav.active {
+    display: flex;
+    flex-direction: column;
+}
+
+#headerNav.active .nav-link {
+    padding: 12px 20px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .user-menu-toggle {
+        border-color: #4a5568;
+    }
+    
+    .user-menu-toggle:hover {
+        background-color: #2d3748;
+        border-color: #718096;
+    }
+    
+    .user-name {
+        color: #e2e8f0;
+    }
+    
+    .user-dropdown {
+        background: #2d3748;
+        border-color: #4a5568;
+    }
+    
+    .dropdown-item {
+        color: #cbd5e0;
+    }
+    
+    .dropdown-item:hover {
+        background-color: #4a5568;
+        color: #f7fafc;
+    }
+    
+    .dropdown-divider {
+        background-color: #4a5568;
+    }
+    
+    .user-email {
+        color: #a0aec0;
+    }
+    
+    .user-role {
+        background-color: #4a5568;
+        color: #e2e8f0;
+    }
+}
