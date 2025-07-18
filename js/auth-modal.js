@@ -145,6 +145,17 @@ class AuthModal {
         // Clear previous errors
         this.clearAllErrors();
         
+        // Check if Firebase is initialized
+        if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
+            this.showError('authGeneralError', 'Firebase가 아직 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.');
+            console.error('Firebase not initialized:', {
+                firebase: !!window.firebase,
+                auth: !!(window.firebase && window.firebase.auth),
+                firestore: !!(window.firebase && window.firebase.firestore)
+            });
+            return;
+        }
+        
         // Disable submit button with loading state
         this.submitBtn.disabled = true;
         const btnText = this.submitBtn.querySelector('.btn-text') || this.submitBtn;
@@ -156,16 +167,24 @@ class AuthModal {
         const name = this.nameInput.value.trim();
         const phone = this.phoneInput.value.trim();
 
+        console.log('Attempting authentication:', { email, mode: this.mode });
+
         try {
             if (this.mode === 'signup') {
                 // Validate signup fields
                 if (!name && this.mode === 'signup') {
                     this.showError('nameError', '이름을 입력해주세요.');
+                    this.submitBtn.disabled = false;
+                    const btnText = this.submitBtn.querySelector('.btn-text') || this.submitBtn;
+                    btnText.textContent = this.mode === 'signup' ? '회원가입' : '로그인';
                     return;
                 }
                 
                 if (password.length < 6) {
                     this.showError('passwordError', '비밀번호는 6자 이상이어야 합니다.');
+                    this.submitBtn.disabled = false;
+                    const btnText = this.submitBtn.querySelector('.btn-text') || this.submitBtn;
+                    btnText.textContent = this.mode === 'signup' ? '회원가입' : '로그인';
                     return;
                 }
 
@@ -213,10 +232,37 @@ class AuthModal {
                 const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
                 const user = userCredential.user;
 
-                // Update last login
-                await firebase.firestore().collection('users').doc(user.uid).update({
-                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                // Check if user document exists and update/create it
+                try {
+                    const userDocRef = firebase.firestore().collection('users').doc(user.uid);
+                    const userDoc = await userDocRef.get();
+                    
+                    if (userDoc.exists) {
+                        // Update last login
+                        await userDocRef.update({
+                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    } else {
+                        // Create user document if it doesn't exist (for users created before Firestore integration)
+                        await userDocRef.set({
+                            uid: user.uid,
+                            email: user.email,
+                            name: user.displayName || user.email.split('@')[0],
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                            role: 'user',
+                            termsAgreed: false,
+                            termsAgreedAt: null,
+                            termsAgreements: null,
+                            videoCreations: [],
+                            modelProfile: null
+                        });
+                        console.log('Created missing user document for existing user');
+                    }
+                } catch (firestoreError) {
+                    console.error('Firestore operation error:', firestoreError);
+                    // Continue with login even if Firestore fails
+                }
 
                 console.log('User logged in successfully:', user);
                 
@@ -234,6 +280,9 @@ class AuthModal {
             
         } catch (error) {
             console.error('Auth error:', error);
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
+            console.error('Full error object:', JSON.stringify(error, null, 2));
             
             // Show error message
             switch (error.code) {
@@ -251,6 +300,18 @@ class AuthModal {
                     break;
                 case 'auth/wrong-password':
                     this.showError('passwordError', '비밀번호가 올바르지 않습니다.');
+                    break;
+                case 'auth/network-request-failed':
+                    this.showError('authGeneralError', '네트워크 연결을 확인해주세요.');
+                    break;
+                case 'auth/too-many-requests':
+                    this.showError('authGeneralError', '너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요.');
+                    break;
+                case 'auth/user-disabled':
+                    this.showError('authGeneralError', '이 계정은 비활성화되었습니다.');
+                    break;
+                case 'auth/operation-not-allowed':
+                    this.showError('authGeneralError', '이메일/비밀번호 로그인이 비활성화되어 있습니다.');
                     break;
                 default:
                     this.showError('authGeneralError', error.message || '오류가 발생했습니다. 다시 시도해주세요.');
