@@ -364,8 +364,23 @@ class AuthManager {
 
     async logout() {
         try {
+            console.log('AuthManager: Starting logout...');
+            
+            // Clear any auth persistence
+            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+            
+            // Sign out
             await firebase.auth().signOut();
-            console.log('User logged out');
+            
+            // Clear local state
+            this.currentUser = null;
+            this.userDoc = null;
+            
+            // Wait for auth state to propagate
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            console.log('AuthManager: User logged out');
+            
             // Reload page to reset state
             window.location.reload();
         } catch (error) {

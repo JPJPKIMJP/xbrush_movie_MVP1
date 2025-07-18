@@ -54,7 +54,7 @@
         
         // Feature flags
         features: {
-            enableAnonymousAuth: true,
+            enableAnonymousAuth: false, // Disabled to allow proper login/logout
             enableImageOptimization: true,
             enableVideoPreview: true,
             enablePremiumModels: true,

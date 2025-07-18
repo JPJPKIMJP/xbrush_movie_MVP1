@@ -208,10 +208,28 @@ class AuthHeader {
     async logout() {
         if (confirm('로그아웃 하시겠습니까?')) {
             try {
+                console.log('Starting logout process...');
+                
+                // Clear any auth persistence
+                await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+                
+                // Sign out
                 await firebase.auth().signOut();
-                console.log('User logged out');
+                
+                // Wait a moment for auth state to propagate
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                console.log('User logged out successfully');
+                
+                // Clear any cached data
+                if (window.authManager) {
+                    window.authManager.currentUser = null;
+                    window.authManager.userDoc = null;
+                }
+                
                 // Redirect to home page
                 window.location.href = 'index.html';
+                
             } catch (error) {
                 console.error('Logout error:', error);
                 alert('로그아웃 중 오류가 발생했습니다.');
