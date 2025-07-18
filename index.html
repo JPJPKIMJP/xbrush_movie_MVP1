@@ -1040,6 +1040,9 @@
         </div>
     </footer>
 
+    <!-- Safari Performance Fix (must load before Firebase) -->
+    <script src="js/safari-performance-fix.js"></script>
+    
     <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -1099,16 +1102,54 @@
         function checkAndLoadModels() {
             if (window.firebaseDB && window.modelStorageAdapter && typeof loadFeaturedModels === 'function') {
                 console.log('[Main Page] Firebase is ready, loading models...');
-                // Load all models in parallel for faster loading
-                Promise.all([
-                    loadFeaturedModels(),
-                    typeof loadCelebrityModels === 'function' ? loadCelebrityModels() : Promise.resolve(),
-                    window.premiumManager ? premiumManager.loadPremiumCarousel('premiumModelsCarousel') : Promise.resolve()
-                ]).then(() => {
-                    console.log('[Main Page] All models loaded');
-                }).catch(error => {
-                    console.error('[Main Page] Error loading models:', error);
-                });
+                
+                // Detect Safari
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                
+                if (isSafari) {
+                    // For Safari, load models sequentially with delays
+                    console.log('[Main Page] Safari detected, using optimized loading sequence');
+                    
+                    // Load featured models first (most important)
+                    loadFeaturedModels()
+                        .then(() => {
+                            console.log('[Main Page] Featured models loaded');
+                            // Load celebrity models after a small delay
+                            return new Promise(resolve => setTimeout(resolve, 100));
+                        })
+                        .then(() => {
+                            if (typeof loadCelebrityModels === 'function') {
+                                return loadCelebrityModels();
+                            }
+                        })
+                        .then(() => {
+                            console.log('[Main Page] Celebrity models loaded');
+                            // Load premium carousel after another delay
+                            return new Promise(resolve => setTimeout(resolve, 100));
+                        })
+                        .then(() => {
+                            if (window.premiumManager) {
+                                return premiumManager.loadPremiumCarousel('premiumModelsCarousel');
+                            }
+                        })
+                        .then(() => {
+                            console.log('[Main Page] All models loaded (Safari optimized)');
+                        })
+                        .catch(error => {
+                            console.error('[Main Page] Error loading models:', error);
+                        });
+                } else {
+                    // For other browsers, load in parallel
+                    Promise.all([
+                        loadFeaturedModels(),
+                        typeof loadCelebrityModels === 'function' ? loadCelebrityModels() : Promise.resolve(),
+                        window.premiumManager ? premiumManager.loadPremiumCarousel('premiumModelsCarousel') : Promise.resolve()
+                    ]).then(() => {
+                        console.log('[Main Page] All models loaded');
+                    }).catch(error => {
+                        console.error('[Main Page] Error loading models:', error);
+                    });
+                }
             } else {
                 console.log('[Main Page] Waiting for Firebase or loadFeaturedModels function...');
                 setTimeout(checkAndLoadModels, 100); // Reduced from 500ms to 100ms

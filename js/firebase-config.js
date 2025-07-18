@@ -52,17 +52,22 @@ function initializeFirebaseServices() {
         console.log('Auth initialized');
 
         // Enable Firestore offline persistence using the newer method
-        firebase.firestore().enablePersistence({ synchronizeTabs: true })
-            .then(() => {
-                console.log('Offline persistence enabled');
-            })
-            .catch((err) => {
-                if (err.code === 'failed-precondition') {
-                    console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-                } else if (err.code === 'unimplemented') {
-                    console.warn('The current browser does not support offline persistence');
-                }
-            });
+        // Skip persistence for Safari due to performance issues
+        if (!window.DISABLE_FIREBASE_PERSISTENCE) {
+            firebase.firestore().enablePersistence({ synchronizeTabs: true })
+                .then(() => {
+                    console.log('Offline persistence enabled');
+                })
+                .catch((err) => {
+                    if (err.code === 'failed-precondition') {
+                        console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+                    } else if (err.code === 'unimplemented') {
+                        console.warn('The current browser does not support offline persistence');
+                    }
+                });
+        } else {
+            console.log('Offline persistence disabled for performance optimization');
+        }
 
         // Initialize anonymous authentication if enabled
         if (window.AppConfig.isFeatureEnabled('enableAnonymousAuth')) {

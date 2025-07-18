@@ -232,15 +232,28 @@ class FirebaseModelStorage {
 
     /**
      * Get active models (status = active)
+     * @param {number|null} limit - Optional limit for Safari performance
      */
-    async getActiveModels() {
+    async getActiveModels(limit = null) {
         try {
             console.log('[FirebaseModelStorage] Getting active models...');
             await this.ensureInitialized();
             
-            const snapshot = await this.db.collection(this.collection)
-                .where('status', '==', 'active')
-                .get();
+            // Detect Safari for optimization
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            
+            let query = this.db.collection(this.collection)
+                .where('status', '==', 'active');
+            
+            // Apply limit for Safari performance
+            if (isSafari && !limit) {
+                console.log('[FirebaseModelStorage] Safari detected, limiting initial query to 10');
+                query = query.limit(10);
+            } else if (limit) {
+                query = query.limit(limit);
+            }
+            
+            const snapshot = await query.get();
             
             console.log('[FirebaseModelStorage] Query complete. Found:', snapshot.size, 'documents');
             

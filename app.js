@@ -3270,7 +3270,7 @@ function initializeEnhancedImageSelection() {
 /**
  * Load and display featured models on the main page
  */
-async function loadFeaturedModels() {
+async function loadFeaturedModels(limitCount = null) {
     const featuredModelsGrid = document.getElementById('featuredModelsGrid');
     const modelCount = document.getElementById('modelCount');
     
@@ -3278,6 +3278,9 @@ async function loadFeaturedModels() {
         console.error('featuredModelsGrid not found!');
         return;
     }
+    
+    // Detect Safari for optimization
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     
     // Show loading state (no sample models)
     featuredModelsGrid.innerHTML = '<div class="loading-placeholder"><p>모델을 불러오는 중...</p></div>';
