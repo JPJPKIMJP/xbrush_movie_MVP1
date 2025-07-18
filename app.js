@@ -1596,6 +1596,39 @@ function nextStep() {
     if (app && app.stepManager.currentStep === 1 && window.authManager && !window.authManager.isLoggedIn()) {
         console.log('User not logged in, showing auth modal');
         
+        // Add visual feedback to the button
+        const nextButton = document.querySelector('.btn-next');
+        if (nextButton) {
+            nextButton.classList.add('auth-required');
+            
+            // Add tooltip
+            const tooltip = document.createElement('div');
+            tooltip.className = 'auth-tooltip';
+            tooltip.textContent = '로그인이 필요합니다';
+            nextButton.style.position = 'relative';
+            nextButton.appendChild(tooltip);
+            
+            // Remove tooltip after a delay
+            setTimeout(() => {
+                if (tooltip.parentNode) {
+                    tooltip.remove();
+                }
+                nextButton.classList.remove('auth-required');
+            }, 2000);
+        }
+        
+        // Add highlight effect
+        const highlight = document.createElement('div');
+        highlight.className = 'auth-modal-highlight';
+        document.body.appendChild(highlight);
+        
+        // Remove highlight after animation
+        setTimeout(() => {
+            if (highlight.parentNode) {
+                highlight.remove();
+            }
+        }, 1000);
+        
         // Show auth modal
         if (window.authModal) {
             window.authModal.open({

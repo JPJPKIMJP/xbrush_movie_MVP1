@@ -1,0 +1,178 @@
+/**
+ * Auth Prompt Animation
+ * Visual cue when login is required
+ */
+
+/* Shake animation for attention */
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-5px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(5px);
+    }
+}
+
+/* Glow animation for buttons */
+@keyframes glow {
+    0% {
+        box-shadow: 0 0 5px rgba(102, 126, 234, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.8), 0 0 30px rgba(102, 126, 234, 0.4);
+    }
+    100% {
+        box-shadow: 0 0 5px rgba(102, 126, 234, 0.5);
+    }
+}
+
+/* Apply shake to button when auth is needed */
+.btn-next.auth-required {
+    animation: shake 0.5s ease-in-out;
+    animation-delay: 0.2s;
+}
+
+/* Highlight effect on auth modal open */
+.auth-modal-highlight {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, transparent 70%);
+    pointer-events: none;
+    animation: pulseHighlight 1s ease-out;
+    z-index: 9999;
+}
+
+@keyframes pulseHighlight {
+    from {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    to {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
+    }
+}
+
+/* Tooltip for login prompt */
+.auth-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    background: #1a202c;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: tooltipBounce 0.5s ease-out;
+    pointer-events: none;
+}
+
+.auth-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1a202c;
+}
+
+@keyframes tooltipBounce {
+    0% {
+        transform: translateX(-50%) translateY(-20px);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(-50%) translateY(-5px);
+    }
+    100% {
+        transform: translateX(-50%) translateY(-10px);
+        opacity: 1;
+    }
+}
+
+/* Enhanced modal open state */
+.auth-modal.modal-enhanced {
+    transform: scale(1.02);
+    transition: transform 0.3s ease-out;
+}
+
+/* Success animation */
+.auth-success-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(102, 234, 126, 0.1);
+    pointer-events: none;
+    animation: successFlash 0.6s ease-out;
+    z-index: 10001;
+}
+
+@keyframes successFlash {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* Input validation states */
+.auth-input.valid {
+    border-color: #48bb78;
+    background-color: #f0fff4;
+}
+
+.auth-input.invalid {
+    border-color: #f56565;
+    background-color: #fff5f5;
+}
+
+/* Password strength indicator */
+.password-strength {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    height: 3px;
+}
+
+.password-strength-bar {
+    flex: 1;
+    background: #e2e8f0;
+    border-radius: 2px;
+    transition: background 0.3s;
+}
+
+.password-strength-bar.active {
+    background: #48bb78;
+}
+
+.password-strength-bar.active.weak {
+    background: #f56565;
+}
+
+.password-strength-bar.active.medium {
+    background: #ed8936;
+}
+
+.password-strength-bar.active.strong {
+    background: #48bb78;
+}

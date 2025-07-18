@@ -16,7 +16,7 @@ class AuthModal {
                 <div class="auth-modal">
                     <div class="auth-modal-header">
                         <h2 id="authModalTitle">로그인</h2>
-                        <button class="auth-modal-close" onclick="authModal.close()">×</button>
+                        <button class="auth-modal-close" onclick="authModal.close()" title="닫기">×</button>
                     </div>
                     
                     <div class="auth-tabs">
@@ -52,7 +52,7 @@ class AuthModal {
                         
                         <div class="auth-actions">
                             <button type="submit" class="btn btn-primary auth-submit" id="authSubmitBtn">
-                                로그인
+                                <span class="btn-text">로그인</span>
                             </button>
                             <button type="button" class="btn btn-outline" onclick="authModal.close()">
                                 취소
@@ -122,10 +122,15 @@ class AuthModal {
         document.getElementById('phoneGroup').style.display = isSignup ? 'block' : 'none';
         document.getElementById('authSubmitBtn').textContent = isSignup ? '회원가입' : '로그인';
         
-        // Update footer
-        document.getElementById('authFooterText').innerHTML = isSignup
-            ? '이미 계정이 있으신가요? <a href="#" onclick="authModal.switchMode(\'login\'); return false;">로그인</a>'
-            : '계정이 없으신가요? <a href="#" onclick="authModal.switchMode(\'signup\'); return false;">회원가입</a>';
+        // Update footer with animation
+        const footerText = document.getElementById('authFooterText');
+        footerText.style.opacity = '0';
+        setTimeout(() => {
+            footerText.innerHTML = isSignup
+                ? '이미 계정이 있으신가요? <a href="#" onclick="authModal.switchMode(\'login\'); return false;">로그인</a>'
+                : '계정이 없으신가요? <a href="#" onclick="authModal.switchMode(\'signup\'); return false;">회원가입</a>';
+            footerText.style.opacity = '1';
+        }, 150);
 
         // Clear errors
         this.clearAllErrors();
@@ -140,9 +145,11 @@ class AuthModal {
         // Clear previous errors
         this.clearAllErrors();
         
-        // Disable submit button
+        // Disable submit button with loading state
         this.submitBtn.disabled = true;
-        this.submitBtn.textContent = '처리 중...';
+        const btnText = this.submitBtn.querySelector('.btn-text');
+        const originalText = btnText.textContent;
+        btnText.innerHTML = '<span style="display: inline-block; animation: pulse 1.5s infinite;">처리 중...</span>';
 
         const email = this.emailInput.value.trim();
         const password = this.passwordInput.value;
@@ -189,11 +196,17 @@ class AuthModal {
 
                 console.log('User created successfully:', user);
                 
+                // Show success animation
+                this.showSuccessAnimation();
+                
                 // Show success
                 if (this.onSuccess) {
                     this.onSuccess(user);
                 }
-                this.close();
+                
+                setTimeout(() => {
+                    this.close();
+                }, 300);
                 
             } else {
                 // Login
@@ -207,10 +220,16 @@ class AuthModal {
 
                 console.log('User logged in successfully:', user);
                 
+                // Show success animation
+                this.showSuccessAnimation();
+                
                 if (this.onSuccess) {
                     this.onSuccess(user);
                 }
-                this.close();
+                
+                setTimeout(() => {
+                    this.close();
+                }, 300);
             }
             
         } catch (error) {
@@ -239,7 +258,8 @@ class AuthModal {
         } finally {
             // Re-enable submit button
             this.submitBtn.disabled = false;
-            this.submitBtn.textContent = this.mode === 'signup' ? '회원가입' : '로그인';
+            const btnText = this.submitBtn.querySelector('.btn-text');
+            btnText.textContent = this.mode === 'signup' ? '회원가입' : '로그인';
         }
     }
 
@@ -286,21 +306,50 @@ class AuthModal {
         this.clearAllErrors();
         this.switchMode(this.mode);
         
-        // Show modal
+        // Show modal with animation
         this.modal.style.display = 'flex';
         this.isOpen = true;
         
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+        
         // Focus email input
-        setTimeout(() => this.emailInput.focus(), 100);
+        setTimeout(() => {
+            this.emailInput.focus();
+            // Add entrance animation class
+            this.modal.querySelector('.auth-modal').classList.add('modal-open');
+        }, 50);
+    }
+
+    showSuccessAnimation() {
+        const successOverlay = document.createElement('div');
+        successOverlay.className = 'auth-success-overlay';
+        document.body.appendChild(successOverlay);
+        
+        setTimeout(() => {
+            if (successOverlay.parentNode) {
+                successOverlay.remove();
+            }
+        }, 600);
     }
 
     close() {
-        this.modal.style.display = 'none';
-        this.isOpen = false;
+        // Add exit animation
+        const modalContent = this.modal.querySelector('.auth-modal');
+        modalContent.style.animation = 'modalSlideOut 0.3s ease-in';
+        this.modal.style.animation = 'fadeOut 0.3s ease-in';
         
-        if (this.onCancel) {
-            this.onCancel();
-        }
+        setTimeout(() => {
+            this.modal.style.display = 'none';
+            this.isOpen = false;
+            
+            // Restore body scroll
+            document.body.style.overflow = '';
+            
+            if (this.onCancel) {
+                this.onCancel();
+            }
+        }, 280);
     }
 }
 
