@@ -271,7 +271,15 @@ class ModelDisplay {
         const name = personalInfo.name || profile?.displayName || '이름 없음';
         const tagline = profile?.tagline || personalInfo.intro || '프로페셔널 AI 모델';
         const specialties = profile?.specialties || personalInfo.categories || [];
-        let thumbnail = portfolio?.thumbnailUrl || personalInfo?.thumbnailUrl || 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=500&fit=crop';
+        // Use multiple fallbacks for thumbnail
+        let thumbnail = portfolio?.thumbnailUrl || personalInfo?.thumbnailUrl || personalInfo?.profileImage || profile?.profileImage;
+        
+        // Local fallback image
+        const localFallback = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjUwMCIgdmlld0JveD0iMCAwIDQwMCA1MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNTAwIiBmaWxsPSIjRjdGQUZDIi8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE4MCIgcj0iNjAiIGZpbGw9IiNFMkU4RjAiLz4KPHBhdGggZD0iTTEyMCAzMjBDMTIwIDI4MC42NTQgMTUxLjM0IDI0OSAxOTAgMjQ5SDIxMEMyNDkuMzQ2IDI0OSAyODEgMjgwLjY1NCAyODEgMzIwVjM4MEgxMjBWMzIwWiIgZmlsbD0iI0UyRThGMCIvPgo8dGV4dCB4PSIyMDAiIHk9IjQ1MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjQTBBRUM0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5BSSBNb2RlbDwvdGV4dD4KPC9zdmc+';
+        
+        if (!thumbnail) {
+            thumbnail = localFallback;
+        }
         
         // Skip caching for now - use original URLs
         // TODO: Fix blob URL persistence issue
@@ -333,7 +341,10 @@ class ModelDisplay {
                          alt="${name}" 
                          loading="lazy"
                          onload="this.classList.add('loaded');"
-                         onerror="if(this.src && !this.dataset.retried) { this.dataset.retried = 'true'; } else { this.style.display='none'; this.parentElement.innerHTML += '<div class=\\'image-error\\'><div class=\\'image-error-icon\\'>🖼️</div><div>이미지 로드 실패</div></div>'; }">
+                         onerror="if(this.src && !this.dataset.retried) { 
+                             this.dataset.retried = 'true';
+                             this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjUwMCIgdmlld0JveD0iMCAwIDQwMCA1MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNTAwIiBmaWxsPSIjRjdGQUZDIi8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE4MCIgcj0iNjAiIGZpbGw9IiNFMkU4RjAiLz4KPHBhdGggZD0iTTEyMCAzMjBDMTIwIDI4MC42NTQgMTUxLjM0IDI0OSAxOTAgMjQ5SDIxMEMyNDkuMzQ2IDI0OSAyODEgMjgwLjY1NCAyODEgMzIwVjM4MEgxMjBWMzIwWiIgZmlsbD0iI0UyRThGMCIvPgo8dGV4dCB4PSIyMDAiIHk9IjQ1MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjQTBBRUM0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5BSSBNb2RlbDwvdGV4dD4KPC9zdmc+';
+                         }">
                     <div class="model-card-overlay">
                         <div class="overlay-buttons">
                             <button class="overlay-btn primary" onclick="event.stopPropagation(); sessionStorage.setItem('selectedModelForMovie', '${id}'); sessionStorage.setItem('skipToStep2', 'true'); window.location.href = 'index.html#step2';">
