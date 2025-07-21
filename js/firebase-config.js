@@ -29,17 +29,10 @@ function initializeFirebaseServices() {
         firebase.initializeApp(firebaseConfig);
         console.log('Firebase app initialized');
 
-        // Initialize Firestore with cache settings
+        // Initialize Firestore
         const db = firebase.firestore();
-        
-        // Configure Firestore settings with cache
-        const settings = {
-            cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-        };
-        db.settings(settings);
-        
         window.firebaseDB = db;
-        console.log('Firestore initialized with cache settings');
+        console.log('Firestore initialized');
 
         // Initialize Storage for images
         const storage = firebase.storage();
@@ -51,10 +44,10 @@ function initializeFirebaseServices() {
         window.firebaseAuth = auth;
         console.log('Auth initialized');
 
-        // Enable Firestore offline persistence using the newer method
+        // Enable Firestore offline persistence
         // Skip persistence for Safari due to performance issues
         if (!window.DISABLE_FIREBASE_PERSISTENCE) {
-            firebase.firestore().enablePersistence({ synchronizeTabs: true })
+            db.enablePersistence({ synchronizeTabs: true })
                 .then(() => {
                     console.log('Offline persistence enabled');
                 })
@@ -63,6 +56,8 @@ function initializeFirebaseServices() {
                         console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
                     } else if (err.code === 'unimplemented') {
                         console.warn('The current browser does not support offline persistence');
+                    } else {
+                        console.warn('Persistence error:', err);
                     }
                 });
         } else {
