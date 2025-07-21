@@ -59,7 +59,23 @@
             // Override console.error to capture all errors
             const originalError = console.error;
             console.error = (...args) => {
-                this.logError('Console Error', args);
+                // Create proper error object for logError
+                const errorObj = {
+                    type: 'Console Error',
+                    message: args.join(' '),
+                    context: 'console.error',
+                    timestamp: new Date().toISOString(),
+                    details: args
+                };
+                
+                // Only log to our system if not already logging
+                if (!this._isLogging) {
+                    this._isLogging = true;
+                    this.logError(errorObj);
+                    this._isLogging = false;
+                }
+                
+                // Always call original console.error
                 originalError.apply(console, args);
             };
         },
@@ -108,12 +124,19 @@
          */
         logError: function(errorObj) {
             if (!this.config.logToConsole) return;
+            
+            // Handle both error objects and plain objects
+            const type = errorObj.type || 'Error';
+            const message = errorObj.message || 'Unknown error';
+            const context = errorObj.context || '';
+            const details = errorObj.details || errorObj;
+            const stack = errorObj.stack || '';
 
-            console.group(`🚨 ${errorObj.type}`);
-            console.error('Message:', errorObj.message);
-            console.error('Context:', errorObj.context);
-            console.error('Details:', errorObj.details);
-            console.error('Stack:', errorObj.stack);
+            console.group(`🚨 ${type}`);
+            console.error('Message:', message);
+            if (context) console.error('Context:', context);
+            if (details && details !== errorObj) console.error('Details:', details);
+            if (stack) console.error('Stack:', stack);
             console.groupEnd();
         },
 
@@ -138,10 +161,14 @@
         notifyUser: function(errorObj) {
             const userMessage = this.getUserFriendlyMessage(errorObj);
             
-            if (window.showToast) {
-                window.showToast(userMessage, 'error');
+            if (window.showToast && typeof window.showToast === 'function') {
+                try {
+                    window.showToast(userMessage, 'error');
+                } catch (e) {
+                    console.error('User notification:', userMessage);
+                }
             } else {
-                console.error(userMessage);
+                console.error('User notification:', userMessage);
             }
         },
 
