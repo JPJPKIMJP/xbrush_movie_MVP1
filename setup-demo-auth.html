@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Auth Setup - XBrush</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .status { 
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        button:hover { background: #5a67d8; }
+        button:disabled { 
+            background: #ccc; 
+            cursor: not-allowed;
+        }
+        .test-accounts {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Demo Authentication Setup</h1>
+        
+        <div class="status info">
+            This page helps set up authentication for the demo site.
+            No Firebase Console access needed!
+        </div>
+
+        <h2>Quick Setup</h2>
+        <button onclick="runQuickSetup()">Run Demo Setup</button>
+        <button onclick="createTestAccounts()">Create Test Accounts</button>
+        
+        <div id="setupStatus"></div>
+
+        <div class="test-accounts">
+            <h3>Test Accounts (will be created)</h3>
+            <ul>
+                <li>Email: <code>demo@xbrush.com</code> / Password: <code>demo123</code></li>
+                <li>Email: <code>test@xbrush.com</code> / Password: <code>test123</code></li>
+                <li>Email: <code>user@demo.com</code> / Password: <code>user123</code></li>
+            </ul>
+        </div>
+
+        <h2>Manual Test</h2>
+        <button onclick="testSignUp()">Test Sign Up</button>
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="checkAuthStatus()">Check Auth Status</button>
+        
+        <div id="testResults"></div>
+
+        <h2>Instructions</h2>
+        <ol>
+            <li>Click "Run Demo Setup" to initialize</li>
+            <li>Click "Create Test Accounts" to add demo users</li>
+            <li>Go back to the main site and try logging in</li>
+            <li>Any email with @ will work for sign up!</li>
+        </ol>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/demo-auth.js"></script>
+
+    <script>
+        function addStatus(message, type = 'info') {
+            const statusEl = document.getElementById('setupStatus');
+            const div = document.createElement('div');
+            div.className = 'status ' + type;
+            div.textContent = message;
+            statusEl.appendChild(div);
+        }
+
+        function addResult(message, type = 'info') {
+            const resultsEl = document.getElementById('testResults');
+            const div = document.createElement('div');
+            div.className = 'status ' + type;
+            div.textContent = message;
+            resultsEl.appendChild(div);
+        }
+
+        async function runQuickSetup() {
+            document.getElementById('setupStatus').innerHTML = '';
+            
+            addStatus('Checking Firebase initialization...', 'info');
+            
+            // Wait for Firebase
+            let attempts = 0;
+            while (!window.firebase && attempts < 30) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (!window.firebase) {
+                addStatus('Firebase not loaded! Refresh the page.', 'error');
+                return;
+            }
+            
+            addStatus('Firebase loaded successfully', 'success');
+            
+            // Check auth
+            if (!firebase.auth) {
+                addStatus('Firebase Auth not available', 'error');
+                return;
+            }
+            
+            addStatus('Firebase Auth is available', 'success');
+            
+            // Try anonymous sign in first
+            try {
+                await firebase.auth().signInAnonymously();
+                addStatus('Anonymous auth works! Email/password should work too.', 'success');
+                await firebase.auth().signOut();
+            } catch (error) {
+                if (error.code === 'auth/operation-not-allowed') {
+                    addStatus('Anonymous auth not enabled. Email/password might still work.', 'warning');
+                } else {
+                    addStatus('Auth error: ' + error.message, 'error');
+                }
+            }
+            
+            addStatus('Setup check complete! Try creating test accounts.', 'success');
+        }
+
+        async function createTestAccounts() {
+            document.getElementById('testResults').innerHTML = '';
+            
+            const testAccounts = [
+                { email: 'demo@xbrush.com', password: 'demo123', name: 'Demo User' },
+                { email: 'test@xbrush.com', password: 'test123', name: 'Test User' },
+                { email: 'user@demo.com', password: 'user123', name: 'Sample User' }
+            ];
+            
+            for (const account of testAccounts) {
+                try {
+                    // Try to create account
+                    const userCredential = await firebase.auth().createUserWithEmailAndPassword(
+                        account.email, 
+                        account.password
+                    );
+                    
+                    // Update profile
+                    await userCredential.user.updateProfile({
+                        displayName: account.name
+                    });
+                    
+                    // Save to Firestore
+                    try {
+                        await firebase.firestore().collection('users').doc(userCredential.user.uid).set({
+                            uid: userCredential.user.uid,
+                            email: account.email,
+                            name: account.name,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            isDemoUser: true
+                        });
+                    } catch (fsError) {
+                        console.log('Firestore save skipped:', fsError);
+                    }
+                    
+                    addResult(`✅ Created: ${account.email}`, 'success');
+                    
+                    // Sign out to create next account
+                    await firebase.auth().signOut();
+                    
+                } catch (error) {
+                    if (error.code === 'auth/email-already-in-use') {
+                        addResult(`ℹ️ Already exists: ${account.email}`, 'info');
+                    } else if (error.code === 'auth/operation-not-allowed') {
+                        addResult('❌ Email/password auth not enabled in Firebase!', 'error');
+                        addResult('Please enable it at: https://console.firebase.google.com/project/xbrush-moviemaker-mvp/authentication/providers', 'error');
+                        break;
+                    } else {
+                        addResult(`❌ Failed to create ${account.email}: ${error.message}`, 'error');
+                    }
+                }
+            }
+        }
+
+        async function testSignUp() {
+            const email = prompt('Enter email (any email with @):') || `test${Date.now()}@demo.com`;
+            const password = prompt('Enter password (min 6 chars):') || 'demo123';
+            
+            try {
+                const result = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                addResult(`Sign up successful: ${result.user.email}`, 'success');
+                await firebase.auth().signOut();
+            } catch (error) {
+                addResult(`Sign up failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            const email = prompt('Enter email:') || 'demo@xbrush.com';
+            const password = prompt('Enter password:') || 'demo123';
+            
+            try {
+                const result = await firebase.auth().signInWithEmailAndPassword(email, password);
+                addResult(`Login successful: ${result.user.email}`, 'success');
+            } catch (error) {
+                addResult(`Login failed: ${error.message}`, 'error');
+            }
+        }
+
+        function checkAuthStatus() {
+            const user = firebase.auth().currentUser;
+            if (user) {
+                addResult(`Logged in as: ${user.email}`, 'success');
+            } else {
+                addResult('No user logged in', 'info');
+            }
+        }
+
+        // Auto-run setup check on load
+        window.addEventListener('load', () => {
+            setTimeout(runQuickSetup, 1000);
+        });
+    </script>
+</body>
+</html>

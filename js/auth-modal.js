@@ -178,10 +178,17 @@ class AuthModal {
         const originalText = btnText.textContent;
         btnText.innerHTML = '<span style="display: inline-block; animation: pulse 1.5s infinite;">처리 중...</span>';
 
-        const email = this.emailInput.value.trim();
+        let email = this.emailInput.value.trim();
         const password = this.passwordInput.value;
         const name = this.nameInput.value.trim();
         const phone = this.phoneInput.value.trim();
+        
+        // Demo site: Accept any email with @ symbol
+        if (!email.includes('@')) {
+            // Auto-append domain for demo
+            email = email + '@demo.com';
+            this.emailInput.value = email;
+        }
 
         console.log('Attempting authentication:', { email, mode: this.mode });
 
@@ -216,9 +223,9 @@ class AuthModal {
                     displayName: name
                 });
                 
-                // Send email verification
-                await user.sendEmailVerification();
-                console.log('Verification email sent to:', email);
+                // Skip email verification for demo site
+                // await user.sendEmailVerification();
+                console.log('Demo user created:', email);
 
                 // Save to Firestore users collection
                 // Use batch write to ensure atomicity
@@ -247,8 +254,8 @@ class AuthModal {
                 // Show success animation with verification message
                 this.showSuccessAnimation();
                 
-                // Show verification message
-                this.showError('authGeneralError', `가입이 완료되었습니다! ${email}로 전송된 확인 이메일을 확인해주세요.`);
+                // Show success message for demo
+                this.showError('authGeneralError', `가입이 완료되었습니다! 이제 로그인하실 수 있습니다.`);
                 const errorElement = document.getElementById('authGeneralError');
                 if (errorElement) {
                     errorElement.style.color = '#4CAF50'; // Green color for success
@@ -259,10 +266,15 @@ class AuthModal {
                     this.onSuccess(user);
                 }
                 
-                // Keep modal open for user to see the message
+                // Auto switch to login mode for demo
                 setTimeout(() => {
-                    this.close();
-                }, 3000);
+                    this.switchMode('login');
+                    this.showError('authGeneralError', '이제 로그인해주세요!');
+                    const errorElement = document.getElementById('authGeneralError');
+                    if (errorElement) {
+                        errorElement.style.color = '#2196F3'; // Blue for info
+                    }
+                }, 2000);
                 
             } else {
                 // Login
@@ -342,7 +354,7 @@ class AuthModal {
                     this.showError('emailError', '이미 사용 중인 이메일입니다.');
                     break;
                 case 'auth/invalid-email':
-                    this.showError('emailError', '올바른 이메일 형식이 아닙니다.');
+                    this.showError('emailError', '이메일에 @ 기호를 포함해주세요.');
                     break;
                 case 'auth/weak-password':
                     this.showError('passwordError', '비밀번호가 너무 약합니다.');
