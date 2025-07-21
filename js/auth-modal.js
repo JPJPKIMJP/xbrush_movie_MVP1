@@ -192,7 +192,7 @@ class AuthModal {
                     this.showError('nameError', '이름을 입력해주세요.');
                     this.submitBtn.disabled = false;
                     const btnText = this.submitBtn.querySelector('.btn-text') || this.submitBtn;
-                    btnText.textContent = this.mode === 'signup' ? '회원가입' : '로그인';
+                    btnText.textContent = originalText;
                     return;
                 }
                 
@@ -200,7 +200,7 @@ class AuthModal {
                     this.showError('passwordError', '비밀번호는 6자 이상이어야 합니다.');
                     this.submitBtn.disabled = false;
                     const btnText = this.submitBtn.querySelector('.btn-text') || this.submitBtn;
-                    btnText.textContent = this.mode === 'signup' ? '회원가입' : '로그인';
+                    btnText.textContent = originalText;
                     return;
                 }
 
