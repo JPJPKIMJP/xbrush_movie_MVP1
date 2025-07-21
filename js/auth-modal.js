@@ -348,8 +348,20 @@ class AuthModal {
             console.error('Error message:', error.message);
             console.error('Full error object:', JSON.stringify(error, null, 2));
             
+            // Handle Firebase Auth errors
+            let errorCode = error.code;
+            
+            // Firebase v9 may return different error codes
+            if (!errorCode && error.message) {
+                if (error.message.includes('password')) {
+                    errorCode = 'auth/wrong-password';
+                } else if (error.message.includes('user')) {
+                    errorCode = 'auth/user-not-found';
+                }
+            }
+            
             // Show error message
-            switch (error.code) {
+            switch (errorCode) {
                 case 'auth/email-already-in-use':
                     this.showError('emailError', '이미 사용 중인 이메일입니다.');
                     break;
@@ -390,10 +402,16 @@ class AuthModal {
     }
 
     showError(elementId, message) {
+        console.log(`Showing error: ${elementId} - ${message}`);
         const errorElement = document.getElementById(elementId);
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
+            // Force visibility
+            errorElement.style.visibility = 'visible';
+            errorElement.style.opacity = '1';
+        } else {
+            console.error(`Error element not found: ${elementId}`);
         }
     }
 
