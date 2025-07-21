@@ -120,7 +120,8 @@ class AuthModal {
         document.getElementById('authModalTitle').textContent = isSignup ? '회원가입' : '로그인';
         document.getElementById('nameGroup').style.display = isSignup ? 'block' : 'none';
         document.getElementById('phoneGroup').style.display = isSignup ? 'block' : 'none';
-        document.getElementById('authSubmitBtn').textContent = isSignup ? '회원가입' : '로그인';
+        const submitBtnText = document.querySelector('#authSubmitBtn .btn-text') || document.getElementById('authSubmitBtn');
+        submitBtnText.textContent = isSignup ? '회원가입' : '로그인';
         
         // Update footer with animation
         const footerText = document.getElementById('authFooterText');

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Auth Test</title>
+</head>
+<body>
+    <h1>Firebase Auth Test</h1>
+    
+    <div>
+        <h2>Sign Up</h2>
+        <input type="email" id="signupEmail" placeholder="Email">
+        <input type="password" id="signupPassword" placeholder="Password">
+        <button onclick="testSignUp()">Sign Up</button>
+    </div>
+    
+    <div>
+        <h2>Sign In</h2>
+        <input type="email" id="signinEmail" placeholder="Email">
+        <input type="password" id="signinPassword" placeholder="Password">
+        <button onclick="testSignIn()">Sign In</button>
+    </div>
+    
+    <div>
+        <h2>Status</h2>
+        <pre id="status"></pre>
+    </div>
+    
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCsQzvoYysNkHcxR4NztCdqTVkD_HgtJEU",
+            authDomain: "xbrush-moviemaker-mvp.firebaseapp.com",
+            projectId: "xbrush-moviemaker-mvp",
+            storageBucket: "xbrush-moviemaker-mvp.firebasestorage.app",
+            messagingSenderId: "138732810619",
+            appId: "1:138732810619:web:a35c938d2d3b2880db4dde"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        function log(message) {
+            document.getElementById('status').textContent += message + '\n';
+            console.log(message);
+        }
+        
+        // Monitor auth state
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                log('Auth state changed: ' + user.email);
+            } else {
+                log('Auth state changed: No user');
+            }
+        });
+        
+        async function testSignUp() {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            
+            log('Attempting sign up for: ' + email);
+            
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                log('Sign up successful: ' + userCredential.user.email);
+                
+                // Create user document
+                await db.collection('users').doc(userCredential.user.uid).set({
+                    email: email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                log('User document created');
+                
+            } catch (error) {
+                log('Sign up error: ' + error.code + ' - ' + error.message);
+            }
+        }
+        
+        async function testSignIn() {
+            const email = document.getElementById('signinEmail').value;
+            const password = document.getElementById('signinPassword').value;
+            
+            log('Attempting sign in for: ' + email);
+            
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                log('Sign in successful: ' + userCredential.user.email);
+            } catch (error) {
+                log('Sign in error: ' + error.code + ' - ' + error.message);
+            }
+        }
+        
+        // Initial status
+        log('Firebase initialized');
+        log('Auth available: ' + (auth !== undefined));
+        log('Firestore available: ' + (db !== undefined));
+    </script>
+</body>
+</html>
