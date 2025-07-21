@@ -59,6 +59,7 @@
             enableVideoPreview: true,
             enablePremiumModels: true,
             enableAdvancedSearch: false,
+            requireEmailVerification: false, // Set to true to require email verification
             debugMode: window.location.hostname === 'localhost'
         },
         

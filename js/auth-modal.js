@@ -141,9 +141,24 @@ class AuthModal {
         this.emailInput.value = email;
     }
 
+    async waitForFirebase() {
+        return new Promise((resolve) => {
+            if (window.firebase && window.firebase.auth && window.firebase.firestore) {
+                resolve();
+            } else {
+                window.addEventListener('firebaseReady', () => resolve(), { once: true });
+                // Timeout after 5 seconds
+                setTimeout(() => resolve(), 5000);
+            }
+        });
+    }
+
     async handleSubmit() {
         // Clear previous errors
         this.clearAllErrors();
+        
+        // Wait for Firebase to be ready
+        await this.waitForFirebase();
         
         // Check if Firebase is initialized
         if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
@@ -188,6 +203,9 @@ class AuthModal {
                     return;
                 }
 
+                // Set persistence before creating user
+                await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                
                 // Create user with Firebase Auth
                 const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
                 const user = userCredential.user;
@@ -196,9 +214,17 @@ class AuthModal {
                 await user.updateProfile({
                     displayName: name
                 });
+                
+                // Send email verification
+                await user.sendEmailVerification();
+                console.log('Verification email sent to:', email);
 
                 // Save to Firestore users collection
-                await firebase.firestore().collection('users').doc(user.uid).set({
+                // Use batch write to ensure atomicity
+                const batch = firebase.firestore().batch();
+                const userDocRef = firebase.firestore().collection('users').doc(user.uid);
+                
+                batch.set(userDocRef, {
                     uid: user.uid,
                     email: email,
                     name: name,
@@ -212,56 +238,81 @@ class AuthModal {
                     videoCreations: [],
                     modelProfile: null
                 });
+                
+                await batch.commit();
 
                 console.log('User created successfully:', user);
                 
-                // Show success animation
+                // Show success animation with verification message
                 this.showSuccessAnimation();
+                
+                // Show verification message
+                this.showError('authGeneralError', `가입이 완료되었습니다! ${email}로 전송된 확인 이메일을 확인해주세요.`);
+                const errorElement = document.getElementById('authGeneralError');
+                if (errorElement) {
+                    errorElement.style.color = '#4CAF50'; // Green color for success
+                }
                 
                 // Show success
                 if (this.onSuccess) {
                     this.onSuccess(user);
                 }
                 
+                // Keep modal open for user to see the message
                 setTimeout(() => {
                     this.close();
-                }, 300);
+                }, 3000);
                 
             } else {
                 // Login
+                // First, set persistence for this session
+                await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                
                 const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
                 const user = userCredential.user;
-
-                // Check if user document exists and update/create it
-                try {
-                    const userDocRef = firebase.firestore().collection('users').doc(user.uid);
-                    const userDoc = await userDocRef.get();
+                
+                // Check if email is verified (optional warning for now)
+                if (!user.emailVerified && window.AppConfig && window.AppConfig.isFeatureEnabled('requireEmailVerification')) {
+                    // Only block if email verification is required
+                    await firebase.auth().signOut();
+                    this.showError('authGeneralError', '이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.');
                     
-                    if (userDoc.exists) {
-                        // Update last login
-                        await userDocRef.update({
-                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    } else {
-                        // Create user document if it doesn't exist (for users created before Firestore integration)
-                        await userDocRef.set({
-                            uid: user.uid,
-                            email: user.email,
-                            name: user.displayName || user.email.split('@')[0],
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-                            role: 'user',
-                            termsAgreed: false,
-                            termsAgreedAt: null,
-                            termsAgreements: null,
-                            videoCreations: [],
-                            modelProfile: null
-                        });
-                        console.log('Created missing user document for existing user');
+                    // Add resend verification button
+                    const errorElement = document.getElementById('authGeneralError');
+                    if (errorElement) {
+                        errorElement.innerHTML += '<br><a href="#" onclick="window.authModal.resendVerification(\'' + email + '\', \'' + password + '\'); return false;">인증 이메일 다시 보내기</a>';
                     }
-                } catch (firestoreError) {
-                    console.error('Firestore operation error:', firestoreError);
-                    // Continue with login even if Firestore fails
+                    return;
+                }
+
+                // Verify user exists in database and update/create document
+                const userDocRef = firebase.firestore().collection('users').doc(user.uid);
+                const userDoc = await userDocRef.get();
+                
+                if (userDoc.exists) {
+                    // Update last login
+                    await userDocRef.update({
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log('User document updated');
+                } else {
+                    // For users created through Firebase Console or other means
+                    // Create their user document
+                    await userDocRef.set({
+                        uid: user.uid,
+                        email: user.email,
+                        name: user.displayName || user.email.split('@')[0],
+                        phone: null,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                        role: 'user',
+                        termsAgreed: false,
+                        termsAgreedAt: null,
+                        termsAgreements: null,
+                        videoCreations: [],
+                        modelProfile: null
+                    });
+                    console.log('Created user document for existing Firebase user');
                 }
 
                 console.log('User logged in successfully:', user);
@@ -299,6 +350,7 @@ class AuthModal {
                     this.showError('authGeneralError', '등록되지 않은 이메일입니다.');
                     break;
                 case 'auth/wrong-password':
+                case 'auth/invalid-credential':
                     this.showError('passwordError', '비밀번호가 올바르지 않습니다.');
                     break;
                 case 'auth/network-request-failed':
@@ -354,7 +406,31 @@ class AuthModal {
         errorElements.forEach(el => {
             el.textContent = '';
             el.style.display = 'none';
+            el.style.color = ''; // Reset color
         });
+    }
+    
+    async resendVerification(email, password) {
+        try {
+            // Sign in temporarily to resend verification
+            const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+            const user = userCredential.user;
+            
+            if (!user.emailVerified) {
+                await user.sendEmailVerification();
+                this.showError('authGeneralError', '인증 이메일이 다시 전송되었습니다. 이메일을 확인해주세요.');
+                const errorElement = document.getElementById('authGeneralError');
+                if (errorElement) {
+                    errorElement.style.color = '#4CAF50'; // Green color for success
+                }
+            }
+            
+            // Sign out again
+            await firebase.auth().signOut();
+        } catch (error) {
+            console.error('Error resending verification:', error);
+            this.showError('authGeneralError', '인증 이메일 전송에 실패했습니다.');
+        }
     }
 
     open(options = {}) {
@@ -437,10 +513,25 @@ class AuthManager {
         this.initAuthListener();
     }
 
-    initAuthListener() {
+    async waitForFirebase() {
+        return new Promise((resolve) => {
+            if (window.firebase && window.firebase.auth && window.firebase.firestore) {
+                resolve();
+            } else {
+                window.addEventListener('firebaseReady', () => resolve(), { once: true });
+                // Timeout after 5 seconds
+                setTimeout(() => resolve(), 5000);
+            }
+        });
+    }
+
+    async initAuthListener() {
+        // Wait for Firebase to be ready
+        await this.waitForFirebase();
+        
         // Ensure Firebase is ready before setting up auth listener
         if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
-            setTimeout(() => this.initAuthListener(), 100);
+            console.error('Firebase not available after waiting');
             return;
         }
         
@@ -512,11 +603,11 @@ class AuthManager {
         try {
             console.log('AuthManager: Starting logout...');
             
-            // Clear any auth persistence
-            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
-            
-            // Sign out
+            // Sign out first
             await firebase.auth().signOut();
+            
+            // Then clear persistence for next session
+            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
             
             // Clear local state
             this.currentUser = null;
