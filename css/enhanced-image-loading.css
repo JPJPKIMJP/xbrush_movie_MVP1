@@ -140,6 +140,18 @@
     display: none !important;
 }
 
+/* Ensure Instagram icon is always visible */
+.ig-icon-img {
+    display: block !important;
+    opacity: 1 !important;
+}
+
+.quick-stat .ig-icon-img {
+    width: 28px !important;
+    height: 28px !important;
+    object-fit: contain !important;
+}
+
 /* Loading skeleton for model cards */
 .model-card.loading .model-card-image,
 .featured-model-card.loading {
