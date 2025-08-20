@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions for admin checks
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.token.admin == true;
+    }
+    
+    function isSuperAdmin() {
+      return request.auth != null && 
+             request.auth.token.superAdmin == true;
+    }
+    
+    function isOwnerOrAdmin(userId) {
+      return request.auth != null && 
+             (request.auth.uid == userId || request.auth.token.admin == true);
+    }
+    
+    // Admin-only collections - SUPER SECURE
+    match /admins/{adminId} {
+      allow read, write: if isSuperAdmin();
+    }
+    
+    match /adminLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Models - Enhanced security with admin override
+    match /models/{modelId} {
+      allow read: if resource.data.status == 'active' || isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isOwnerOrAdmin(resource.data.userId) || 
+                       (isAdmin() && request.resource.data.status in ['active', 'pending', 'rejected']);
+      allow delete: if isAdmin();
+    }
+    
+    // Virtual models - Admin can manage
+    match /virtualModels/{modelId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Premium models - Admin managed
+    match /premiumModels/{modelId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Pro models - Admin managed
+    match /proModels/{modelId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Users - Enhanced with admin access
+    match /users/{userId} {
+      allow read: if isOwnerOrAdmin(userId);
+      allow write: if request.auth.uid == userId;
+      allow update: if isAdmin(); // Admin can update any user
+      allow delete: if isSuperAdmin();
+    }
+    
+    // Projects - Users own data + admin access
+    match /projects/{projectId} {
+      allow read, write: if isAuthenticated() && 
+                           (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    // Reviews - Enhanced with admin moderation
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Public configuration
+    match /config/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Licensing plans
+    match /licensingPlans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Premium contracts - Admin only
+    match /premiumContracts/{contractId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Payments - User own data + admin access
+    match /payments/{paymentId} {
+      allow read, write: if isAuthenticated() && 
+                           (request.auth.uid == resource.data.userId || isAdmin());
+    }
+    
+    // Model profiles - Admin managed
+    match /modelProfiles/{profileId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Licenses - Admin managed
+    match /licenses/{licenseId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Model tier history - Admin only
+    match /modelTierHistory/{historyId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Fallback - Deny by default for security
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

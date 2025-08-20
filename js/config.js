@@ -54,7 +54,7 @@
         
         // Feature flags
         features: {
-            enableAnonymousAuth: false, // Disabled to allow proper login/logout
+            enableAnonymousAuth: true, // Enabled for model data access
             enableImageOptimization: true,
             enableVideoPreview: true,
             enablePremiumModels: true,

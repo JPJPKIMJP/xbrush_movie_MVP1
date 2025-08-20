@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Model Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; }
+        .success { background: #e6ffe6; }
+        .info { background: #e6f3ff; }
+        .model { border: 1px solid #ddd; padding: 10px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Simple Model Loading Test</h1>
+    <button onclick="testDirectQuery()">Test Direct Firebase Query</button>
+    <button onclick="testModelAdapter()">Test Model Storage Adapter</button>
+    <div id="logs"></div>
+    <div id="results"></div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Config -->
+    <script src="js/config.js"></script>
+    <script src="js/app-namespace.js"></script>
+    
+    <script>
+        const logs = document.getElementById('logs');
+        const results = document.getElementById('results');
+        
+        function log(msg, type = 'info') {
+            console.log(msg);
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = new Date().toLocaleTimeString() + ': ' + msg;
+            logs.appendChild(div);
+        }
+
+        // Initialize Firebase immediately
+        if (window.AppConfig) {
+            try {
+                const config = window.AppConfig.getFirebaseConfig();
+                firebase.initializeApp(config);
+                window.firebaseDB = firebase.firestore();
+                log('✅ Firebase initialized successfully', 'success');
+            } catch (error) {
+                log('❌ Firebase init error: ' + error.message, 'error');
+            }
+        }
+
+        async function testDirectQuery() {
+            log('🔍 Testing direct Firebase query...', 'info');
+            results.innerHTML = '';
+            
+            try {
+                if (!window.firebaseDB) {
+                    throw new Error('Firebase not initialized');
+                }
+                
+                const snapshot = await window.firebaseDB
+                    .collection('models')
+                    .where('status', '==', 'active')
+                    .limit(5)
+                    .get();
+                
+                log(`✅ Direct query success! Found ${snapshot.size} models`, 'success');
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const div = document.createElement('div');
+                    div.className = 'model';
+                    div.innerHTML = `
+                        <h3>${data.personalInfo?.name || 'No name'}</h3>
+                        <p>ID: ${doc.id}</p>
+                        <p>Status: ${data.status}</p>
+                        <p>Tier: ${data.tier || 'No tier'}</p>
+                        <p>Thumbnail: ${data.portfolio?.thumbnailUrl ? 'Yes' : 'No'}</p>
+                    `;
+                    results.appendChild(div);
+                });
+                
+            } catch (error) {
+                log('❌ Direct query error: ' + error.message, 'error');
+            }
+        }
+
+        async function testModelAdapter() {
+            log('🔍 Testing Model Storage Adapter...', 'info');
+            results.innerHTML = '';
+            
+            try {
+                // Check if adapter exists
+                if (!window.modelStorageAdapter) {
+                    log('❌ ModelStorageAdapter not found!', 'error');
+                    return;
+                }
+                
+                log('✅ ModelStorageAdapter found', 'success');
+                
+                // Test getActiveModels
+                const models = await window.modelStorageAdapter.getActiveModels();
+                log(`✅ Adapter query success! Found ${models.length} models`, 'success');
+                
+                models.slice(0, 5).forEach(model => {
+                    const div = document.createElement('div');
+                    div.className = 'model';
+                    div.innerHTML = `
+                        <h3>${model.personalInfo?.name || 'No name'}</h3>
+                        <p>ID: ${model.id}</p>
+                        <p>Status: ${model.status}</p>
+                        <p>Tier: ${model.tier || 'No tier'}</p>
+                        <p>Thumbnail: ${model.portfolio?.thumbnailUrl ? 'Yes' : 'No'}</p>
+                    `;
+                    results.appendChild(div);
+                });
+                
+            } catch (error) {
+                log('❌ Adapter error: ' + error.message, 'error');
+            }
+        }
+
+        // Check what's loaded
+        setTimeout(() => {
+            log('📊 Status check:', 'info');
+            log(`Firebase: ${!!window.firebase}`, 'info');
+            log(`FirebaseDB: ${!!window.firebaseDB}`, 'info');
+            log(`ModelStorageAdapter: ${!!window.modelStorageAdapter}`, 'info');
+            log(`AppConfig: ${!!window.AppConfig}`, 'info');
+        }, 1000);
+    </script>
+
+    <!-- Load the model storage adapter -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-model-storage.js"></script>
+    <script src="js/model-storage-adapter.js"></script>
+</body>
+</html>

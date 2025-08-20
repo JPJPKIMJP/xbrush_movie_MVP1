@@ -12,6 +12,30 @@
     <link rel="stylesheet" href="premium-models.css">
     <link rel="stylesheet" href="css/validation.css">
     
+    <!-- Admin Security Styles -->
+    <style>
+        .admin-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #2d3748;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-family: Arial, sans-serif;
+        }
+        .admin-content {
+            display: none;
+        }
+        .admin-content.authorized {
+            display: block;
+        }
+    </style>
+    
     <style>
         body {
             background: #f7fafc;
@@ -748,6 +772,19 @@
     </style>
 </head>
 <body>
+    <!-- Admin Security Check Loading Screen -->
+    <div id="adminLoading" class="admin-loading">
+        <div style="text-align: center;">
+            <h2>🔐 Admin Access Verification</h2>
+            <p>Checking admin credentials...</p>
+            <div style="margin-top: 20px;">
+                <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #666; border-top: 3px solid white; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Admin Content (Hidden until authorized) -->
+    <div id="adminContent" class="admin-content">
     <!-- Admin Header -->
     <header class="admin-header">
         <div class="admin-container">
@@ -1816,6 +1853,141 @@
         
         // Call initialization on page load
         window.addEventListener('DOMContentLoaded', initializeAdmin);
+    </script>
+    
+    <!-- Admin Security Scripts -->
+    <script src="js/admin-auth.js"></script>
+    <script>
+        // Admin Security Implementation
+        (async function() {
+            try {
+                console.log('🔐 Starting admin security check...');
+                
+                // Show loading screen
+                document.getElementById('adminLoading').style.display = 'flex';
+                document.getElementById('adminContent').style.display = 'none';
+                
+                // Wait for admin auth to initialize
+                await window.adminAuth.init();
+                
+                // Check admin access
+                const hasAccess = await window.adminAuth.requireAdmin();
+                
+                if (hasAccess) {
+                    // User is authenticated admin
+                    console.log('✅ Admin access granted');
+                    
+                    // Log admin access
+                    await window.adminAuth.logAdminAction('admin_dashboard_access', {
+                        page: 'admin.html',
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // Show admin content
+                    document.getElementById('adminLoading').style.display = 'none';
+                    document.getElementById('adminContent').classList.add('authorized');
+                    
+                    // Update UI with admin info
+                    updateAdminUI();
+                    
+                } else {
+                    // Access denied - redirect will be handled by adminAuth
+                    console.log('❌ Admin access denied');
+                }
+                
+            } catch (error) {
+                console.error('Admin security check failed:', error);
+                
+                // Show error and redirect
+                document.getElementById('adminLoading').innerHTML = `
+                    <div style="text-align: center;">
+                        <h2>🚫 Access Error</h2>
+                        <p>Security check failed. Redirecting...</p>
+                    </div>
+                `;
+                
+                setTimeout(() => {
+                    window.location.href = '/index.html';
+                }, 3000);
+            }
+        })();
+        
+        /**
+         * Update admin UI with user information
+         */
+        function updateAdminUI() {
+            const adminStatus = window.adminAuth.getAdminStatus();
+            
+            // Update header with admin info
+            const adminInfo = document.querySelector('.admin-info');
+            if (adminInfo) {
+                adminInfo.innerHTML = `
+                    <span style="color: #00ff00;">●</span>
+                    Admin: ${adminStatus.user?.email || 'Unknown'}
+                    ${adminStatus.isSuperAdmin ? '(Super Admin)' : ''}
+                `;
+            }
+            
+            // Show/hide features based on permissions
+            if (!adminStatus.hasPermission?.('manageUsers')) {
+                // Hide user management features
+                const userTabs = document.querySelectorAll('[data-permission="manageUsers"]');
+                userTabs.forEach(tab => tab.style.display = 'none');
+            }
+            
+            console.log('Admin UI updated for:', adminStatus.user?.email);
+        }
+        
+        /**
+         * Enhanced admin function wrappers with permission checks
+         */
+        
+        // Override existing admin functions to add security
+        const originalApproveModel = window.approveModel;
+        window.approveModel = async function(modelId) {
+            if (!window.adminAuth.hasPermission('manageModels')) {
+                alert('Permission denied: Model management required');
+                return;
+            }
+            
+            await window.adminAuth.logAdminAction('approve_model', { modelId });
+            return originalApproveModel(modelId);
+        };
+        
+        const originalRejectModel = window.rejectModel;
+        window.rejectModel = async function(modelId) {
+            if (!window.adminAuth.hasPermission('manageModels')) {
+                alert('Permission denied: Model management required');
+                return;
+            }
+            
+            await window.adminAuth.logAdminAction('reject_model', { modelId });
+            return originalRejectModel(modelId);
+        };
+        
+        const originalDeleteModel = window.deleteModel;
+        window.deleteModel = async function(modelId) {
+            if (!window.adminAuth.isSuperAdmin()) {
+                alert('Permission denied: Super admin required for deletion');
+                return;
+            }
+            
+            await window.adminAuth.logAdminAction('delete_model', { modelId });
+            return originalDeleteModel(modelId);
+        };
+        
+        // Add spinning animation for loading
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        console.log('🛡️ Admin security protection active');
+        
     </script>
 </body>
 </html>

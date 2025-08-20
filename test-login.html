@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 400px; margin: 0 auto; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #667eea; color: white; cursor: pointer; }
+        button:hover { background: #5a67d8; }
+        .result { margin: 20px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #e6ffe6; border: 1px solid #00aa00; }
+        .error { background: #ffe6e6; border: 1px solid #ff0000; }
+        .info { background: #e6f3ff; border: 1px solid #0066cc; }
+    </style>
+</head>
+<body>
+    <h1>Firebase 로그인 테스트</h1>
+    
+    <div>
+        <h3>테스트 계정 정보:</h3>
+        <p>이메일: test@xbrush.com</p>
+        <p>비밀번호: test123456</p>
+    </div>
+    
+    <form id="loginForm">
+        <input type="email" id="email" placeholder="이메일" value="test@xbrush.com" required>
+        <input type="password" id="password" placeholder="비밀번호" value="test123456" required>
+        <button type="submit">로그인 테스트</button>
+    </form>
+    
+    <button onclick="createTestUser()">테스트 계정 생성</button>
+    <button onclick="resetPassword()">비밀번호 재설정</button>
+    
+    <div id="result"></div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Config -->
+    <script src="js/config.js"></script>
+    
+    <script>
+        const resultDiv = document.getElementById('result');
+        
+        function showResult(message, type = 'info') {
+            console.log(message);
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+        // Initialize Firebase
+        if (window.AppConfig) {
+            try {
+                const config = window.AppConfig.getFirebaseConfig();
+                firebase.initializeApp(config);
+                showResult('✅ Firebase 초기화 성공', 'success');
+            } catch (error) {
+                showResult('❌ Firebase 초기화 실패: ' + error.message, 'error');
+            }
+        }
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            showResult('🔄 로그인 시도 중...', 'info');
+            
+            try {
+                const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                showResult(`✅ 로그인 성공!<br>
+                    이메일: ${user.email}<br>
+                    UID: ${user.uid}<br>
+                    이메일 인증: ${user.emailVerified ? '완료' : '미완료'}`, 'success');
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showResult(`❌ 로그인 실패<br>
+                    오류 코드: ${error.code}<br>
+                    오류 메시지: ${error.message}`, 'error');
+            }
+        });
+
+        async function createTestUser() {
+            showResult('🔄 테스트 계정 생성 중...', 'info');
+            
+            try {
+                const userCredential = await firebase.auth().createUserWithEmailAndPassword('test@xbrush.com', 'test123456');
+                const user = userCredential.user;
+                
+                await user.updateProfile({
+                    displayName: 'Test User'
+                });
+                
+                showResult(`✅ 계정 생성 성공!<br>
+                    이메일: ${user.email}<br>
+                    UID: ${user.uid}`, 'success');
+                
+            } catch (error) {
+                showResult(`❌ 계정 생성 실패<br>
+                    오류 코드: ${error.code}<br>
+                    오류 메시지: ${error.message}`, 'error');
+            }
+        }
+
+        async function resetPassword() {
+            const email = document.getElementById('email').value;
+            
+            if (!email) {
+                showResult('❌ 이메일을 입력해주세요', 'error');
+                return;
+            }
+            
+            try {
+                await firebase.auth().sendPasswordResetEmail(email);
+                showResult(`✅ 비밀번호 재설정 이메일을 ${email}로 전송했습니다.`, 'success');
+            } catch (error) {
+                showResult(`❌ 비밀번호 재설정 실패<br>
+                    오류 코드: ${error.code}<br>
+                    오류 메시지: ${error.message}`, 'error');
+            }
+        }
+
+        // Auth state listener
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                console.log('사용자 로그인됨:', user.email);
+            } else {
+                console.log('사용자 로그아웃됨');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -376,7 +376,8 @@ class AuthModal {
                     break;
                 case 'auth/wrong-password':
                 case 'auth/invalid-credential':
-                    this.showError('passwordError', '비밀번호가 올바르지 않습니다.');
+                case 'auth/invalid-login-credentials':
+                    this.showError('passwordError', '이메일 또는 비밀번호가 올바르지 않습니다.');
                     break;
                 case 'auth/network-request-failed':
                     this.showError('authGeneralError', '네트워크 연결을 확인해주세요.');

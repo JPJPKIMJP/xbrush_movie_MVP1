@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Model Loading</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .log { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; border-left: 4px solid #ff0000; }
+        .success { background: #e6ffe6; border-left: 4px solid #00aa00; }
+        .info { background: #e6f3ff; border-left: 4px solid #0066cc; }
+        .model-card { border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Debug Model Loading</h1>
+    <div id="logs"></div>
+    <div id="models"></div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Configuration -->
+    <script src="js/config.js"></script>
+    <script src="js/app-namespace.js"></script>
+    
+    <script>
+        const logs = document.getElementById('logs');
+        const modelsDiv = document.getElementById('models');
+        
+        function log(message, type = 'info') {
+            console.log(message);
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            logs.appendChild(div);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        log('🔍 Starting Firebase model loading debug...', 'info');
+
+        // Initialize Firebase
+        if (!window.firebase) {
+            log('❌ Firebase SDK not loaded!', 'error');
+        } else {
+            log('✅ Firebase SDK loaded', 'success');
+        }
+
+        // Check AppConfig
+        if (!window.AppConfig) {
+            log('❌ AppConfig not loaded!', 'error');
+        } else {
+            log('✅ AppConfig loaded', 'success');
+            
+            // Initialize Firebase
+            try {
+                const firebaseConfig = window.AppConfig.getFirebaseConfig();
+                log(`🔧 Firebase config: ${JSON.stringify(firebaseConfig, null, 2)}`, 'info');
+                
+                firebase.initializeApp(firebaseConfig);
+                log('✅ Firebase app initialized', 'success');
+
+                const db = firebase.firestore();
+                window.firebaseDB = db;
+                log('✅ Firestore initialized', 'success');
+
+                // Test direct Firestore query
+                testFirestoreQuery();
+                
+            } catch (error) {
+                log(`❌ Firebase initialization error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFirestoreQuery() {
+            try {
+                log('📊 Testing direct Firestore query...', 'info');
+                
+                const snapshot = await window.firebaseDB.collection('models')
+                    .where('status', '==', 'active')
+                    .limit(5)
+                    .get();
+                
+                log(`✅ Query successful! Found ${snapshot.size} active models`, 'success');
+                
+                modelsDiv.innerHTML = '<h2>Active Models:</h2>';
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const modelCard = document.createElement('div');
+                    modelCard.className = 'model-card';
+                    modelCard.innerHTML = `
+                        <h3>${data.personalInfo?.name || 'No name'}</h3>
+                        <p><strong>ID:</strong> ${doc.id}</p>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Intro:</strong> ${data.personalInfo?.intro || 'No intro'}</p>
+                        <p><strong>Thumbnail:</strong> ${data.portfolio?.thumbnailUrl || 'No thumbnail'}</p>
+                        <p><strong>Categories:</strong> ${data.personalInfo?.categories?.join(', ') || 'None'}</p>
+                        <p><strong>Created:</strong> ${data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : 'No date'}</p>
+                    `;
+                    modelsDiv.appendChild(modelCard);
+                });
+                
+            } catch (error) {
+                log(`❌ Firestore query error: ${error.message}`, 'error');
+                log(`Error details: ${JSON.stringify(error, null, 2)}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

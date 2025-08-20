@@ -1,0 +1,227 @@
+/**
+ * Enhanced Image Loading Styles
+ * Provides smooth loading experience and elegant fallbacks
+ */
+
+/* Image loading animations */
+.model-thumbnail,
+.featured-model-image,
+.model-image {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+}
+
+.model-thumbnail.loaded,
+.featured-model-image.loaded,
+.model-image.loaded {
+    opacity: 1;
+}
+
+/* Loading placeholder animation */
+.model-card-image,
+.featured-model-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.model-card-image::before,
+.featured-model-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #f0f0f0 25%, transparent 37%, #f0f0f0 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    z-index: 1;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.model-card-image:has(.loaded)::before,
+.featured-model-card:has(.loaded)::before {
+    opacity: 0;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Enhanced elegant placeholder */
+.elegant-image-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    z-index: 2;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.placeholder-content {
+    text-align: center;
+    padding: 20px;
+    animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.placeholder-icon {
+    margin-bottom: 12px;
+    opacity: 0.9;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-5px);
+    }
+    60% {
+        transform: translateY(-3px);
+    }
+}
+
+.placeholder-icon svg {
+    width: 48px;
+    height: 48px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.placeholder-text {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.placeholder-subtext {
+    font-size: 12px;
+    opacity: 0.8;
+    font-weight: 400;
+}
+
+/* Hover effects for placeholders */
+.elegant-image-placeholder:hover {
+    transform: scale(1.02);
+    transition: transform 0.2s ease;
+}
+
+.elegant-image-placeholder:hover .placeholder-content {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease;
+}
+
+/* Error state improvements */
+.image-error {
+    display: none !important;
+}
+
+/* Loading skeleton for model cards */
+.model-card.loading .model-card-image,
+.featured-model-card.loading {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 37%, #f0f0f0 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .placeholder-icon svg {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .placeholder-text {
+        font-size: 14px;
+    }
+    
+    .placeholder-subtext {
+        font-size: 11px;
+    }
+    
+    .placeholder-content {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .placeholder-icon svg {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .placeholder-text {
+        font-size: 13px;
+    }
+    
+    .placeholder-subtext {
+        font-size: 10px;
+    }
+    
+    .placeholder-content {
+        padding: 12px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .elegant-image-placeholder {
+        background: #000;
+        color: #fff;
+        border: 2px solid #fff;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .model-thumbnail,
+    .featured-model-image,
+    .model-image,
+    .elegant-image-placeholder,
+    .placeholder-content,
+    .placeholder-icon {
+        animation: none;
+        transition: none;
+    }
+    
+    .model-card-image::before,
+    .featured-model-card::before {
+        animation: none;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .model-card-image::before,
+    .featured-model-card::before {
+        background: linear-gradient(90deg, #2a2a2a 25%, transparent 37%, #2a2a2a 63%);
+    }
+    
+    .elegant-image-placeholder {
+        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    }
+}

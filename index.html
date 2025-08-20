@@ -162,7 +162,10 @@
                     </div>
                     
                     <div id="featuredModelsGrid" class="featured-models-grid">
-                        <!-- Models will be loaded here -->
+                        <div class="loading-placeholder">
+                            <p>모델을 불러오는 중...</p>
+                            <button onclick="manualLoadModels()" style="margin-top: 10px; padding: 5px 10px;">수동으로 모델 불러오기</button>
+                        </div>
                     </div>
                     
                     <div class="text-center mt-3">
@@ -1108,8 +1111,14 @@
     <script>
         // Function to load models when ready
         function checkAndLoadModels() {
+            console.log('[Main Page] Checking Firebase readiness...', {
+                firebaseDB: !!window.firebaseDB,
+                modelStorageAdapter: !!window.modelStorageAdapter,
+                loadFeaturedModels: typeof loadFeaturedModels === 'function'
+            });
+            
             if (window.firebaseDB && window.modelStorageAdapter && typeof loadFeaturedModels === 'function') {
-                console.log('[Main Page] Firebase is ready, loading models...');
+                console.log('[Main Page] ✅ Firebase is ready, loading models...');
                 
                 // Detect Safari
                 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -1159,7 +1168,7 @@
                     });
                 }
             } else {
-                console.log('[Main Page] Waiting for Firebase or loadFeaturedModels function...');
+                console.log('[Main Page] ❌ Not ready yet, retrying in 100ms...');
                 setTimeout(checkAndLoadModels, 100); // Reduced from 500ms to 100ms
             }
         }
@@ -1177,6 +1186,76 @@
             checkAndLoadModels();
         });
         
+        // Manual model loading function
+        async function manualLoadModels() {
+            console.log('[Manual] Attempting manual model load...');
+            const grid = document.getElementById('featuredModelsGrid');
+            const modelCount = document.getElementById('modelCount');
+            
+            try {
+                // Initialize Firebase directly if needed
+                if (!window.firebaseDB) {
+                    console.log('[Manual] Initializing Firebase...');
+                    if (window.AppConfig) {
+                        const config = window.AppConfig.getFirebaseConfig();
+                        firebase.initializeApp(config);
+                        window.firebaseDB = firebase.firestore();
+                    }
+                }
+                
+                grid.innerHTML = '<div class="loading-placeholder"><p>수동으로 불러오는 중...</p></div>';
+                
+                // Direct Firebase query
+                const snapshot = await window.firebaseDB
+                    .collection('models')
+                    .where('status', '==', 'active')
+                    .limit(10)
+                    .get();
+                
+                console.log('[Manual] Found', snapshot.size, 'active models');
+                
+                // Filter for basic models only
+                const models = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (!data.tier || data.tier === 'basic') {
+                        models.push({id: doc.id, ...data});
+                    }
+                });
+                
+                console.log('[Manual] After filtering:', models.length, 'basic models');
+                modelCount.textContent = `총 ${models.length}개`;
+                
+                if (models.length === 0) {
+                    grid.innerHTML = '<div class="loading-placeholder"><p>등록된 기본 모델이 없습니다.</p></div>';
+                    return;
+                }
+                
+                // Display models manually
+                grid.innerHTML = '';
+                models.slice(0, 4).forEach(model => {
+                    const modelCard = document.createElement('div');
+                    modelCard.className = 'model-card';
+                    modelCard.innerHTML = `
+                        <div class="model-image-container">
+                            <img src="${model.portfolio?.thumbnailUrl || 'https://via.placeholder.com/200x250?text=No+Image'}" 
+                                 alt="${model.personalInfo?.name}" class="model-image">
+                        </div>
+                        <h3 class="model-name">${model.personalInfo?.name || 'Unknown'}</h3>
+                        <p class="model-intro">${model.personalInfo?.intro || 'No description'}</p>
+                        <button class="btn btn-outline" onclick="selectModel(this, '${model.id}', 'registered')">선택</button>
+                    `;
+                    grid.appendChild(modelCard);
+                });
+                
+                console.log('[Manual] ✅ Models loaded successfully');
+                
+            } catch (error) {
+                console.error('[Manual] Error:', error);
+                grid.innerHTML = `<div class="loading-placeholder"><p>오류: ${error.message}</p></div>`;
+            }
+        }
+
         // Secret admin access: Press Ctrl+Shift+A
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.shiftKey && e.key === 'A') {
@@ -1184,6 +1263,9 @@
             }
         });
     </script>
+    
+    <!-- Image Fallback System -->
+    <script src="js/image-fallback-system.js"></script>
     
     <!-- Image Loader -->
     <script src="js/image-loader.js"></script>
